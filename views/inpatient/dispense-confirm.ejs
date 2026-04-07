@@ -1,0 +1,9 @@
+<div class="card"><div class="card-header"><h2><i class="fas fa-procedures"></i> Phiếu lĩnh chờ cấp phát</h2></div>
+<div class="card-body" style="padding:0"><table><thead><tr><th>Mã</th><th>Khoa</th><th>Người lập</th><th>Ngày</th><th>Thao tác</th></tr></thead>
+<tbody><% if(!phieuLinh.length){%><tr><td colspan="5" class="text-center text-muted" style="padding:30px">Không có phiếu chờ</td></tr><%}%>
+<% phieuLinh.forEach(p => { %><tr><td>PL-<%= p.id %></td><td><%= p.khoa %></td><td><%= p.nguoi_lap %></td><td><%= new Date(p.ngay_lap).toLocaleString('vi-VN') %></td>
+<td><a href="/cap-phat-noi-tru/chi-tiet/<%= p.id %>" class="btn btn-sm btn-primary"><i class="fas fa-eye"></i> Xem & Cấp phát</a></td></tr><% }) %></tbody></table></div></div>
+<div class="card mt-2"><div class="card-header"><h2><i class="fas fa-check-circle"></i> Đã cấp phát gần đây</h2></div>
+<div class="card-body" style="padding:0"><table><thead><tr><th>Mã</th><th>Khoa</th><th>Người lập</th><th>Ngày</th><th>Trạng thái</th></tr></thead>
+<tbody><% phieuDaCapPhat.forEach(p => { %><tr><td>PL-<%= p.id %></td><td><%= p.khoa %></td><td><%= p.nguoi_lap %></td><td><%= new Date(p.ngay_lap).toLocaleString('vi-VN') %></td>
+<td><span class="badge badge-success">Đã cấp phát</span></td></tr><% }) %></tbody></table></div></div>

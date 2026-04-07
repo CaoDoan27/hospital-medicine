@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Hệ thống Quản lý Cấp phát Thuốc Bệnh viện">
+  <title><%= typeof title !== 'undefined' ? title + ' | ' : '' %>Quản lý Dược - Bệnh viện</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <i class="fas fa-hospital"></i>
+        <span>HIS Pharmacy</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" title="Thu gọn menu">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="avatar"><i class="fas fa-user-circle"></i></div>
+      <div class="user-info">
+        <span class="user-name"><%= user ? user.ho_ten : '' %></span>
+        <span class="user-role">
+          <% if (user) { %>
+            <% if (user.vai_tro === 'duoc_si_tong') { %>Dược sĩ Tổng
+            <% } else if (user.vai_tro === 'duoc_si_kho_le') { %>Dược sĩ Kho lẻ
+            <% } else if (user.vai_tro === 'dieu_duong') { %>Điều dưỡng
+            <% } else if (user.vai_tro === 'ke_toan') { %>Kế toán<% } %>
+          <% } %>
+        </span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/dashboard" class="nav-item <%= currentPath === '/dashboard' ? 'active' : '' %>">
+        <i class="fas fa-tachometer-alt"></i><span>Tổng quan</span>
+      </a>
+
+      <div class="nav-section">Quản lý Kho</div>
+      <% if (!user || ['duoc_si_tong'].includes(user.vai_tro)) { %>
+      <a href="/danh-muc-thuoc" class="nav-item <%= currentPath.startsWith('/danh-muc-thuoc') ? 'active' : '' %>">
+        <i class="fas fa-pills"></i><span>Danh mục Thuốc</span>
+      </a>
+      <a href="/nhap-kho" class="nav-item <%= currentPath.startsWith('/nhap-kho') ? 'active' : '' %>">
+        <i class="fas fa-warehouse"></i><span>Nhập kho</span>
+      </a>
+      <% } %>
+      <% if (!user || ['duoc_si_tong','duoc_si_kho_le'].includes(user.vai_tro)) { %>
+      <a href="/dieu-chuyen" class="nav-item <%= currentPath.startsWith('/dieu-chuyen') ? 'active' : '' %>">
+        <i class="fas fa-exchange-alt"></i><span>Điều chuyển nội bộ</span>
+      </a>
+      <a href="/kiem-ke" class="nav-item <%= currentPath.startsWith('/kiem-ke') ? 'active' : '' %>">
+        <i class="fas fa-clipboard-check"></i><span>Kiểm kê & Cảnh báo</span>
+      </a>
+      <% } %>
+
+      <div class="nav-section">Cấp phát Thuốc</div>
+      <% if (!user || ['duoc_si_kho_le'].includes(user.vai_tro)) { %>
+      <a href="/cap-phat-ngoai-tru" class="nav-item <%= currentPath.startsWith('/cap-phat-ngoai-tru') ? 'active' : '' %>">
+        <i class="fas fa-hand-holding-medical"></i><span>Cấp phát Ngoại trú</span>
+      </a>
+      <a href="/cap-phat-noi-tru" class="nav-item <%= currentPath.startsWith('/cap-phat-noi-tru') ? 'active' : '' %>">
+        <i class="fas fa-procedures"></i><span>Cấp phát Nội trú</span>
+      </a>
+      <% } %>
+      <% if (!user || ['dieu_duong'].includes(user.vai_tro)) { %>
+      <a href="/y-lenh" class="nav-item <%= currentPath.startsWith('/y-lenh') ? 'active' : '' %>">
+        <i class="fas fa-file-medical"></i><span>Tổng hợp Y lệnh</span>
+      </a>
+      <a href="/tu-truc" class="nav-item <%= currentPath.startsWith('/tu-truc') ? 'active' : '' %>">
+        <i class="fas fa-first-aid"></i><span>Xuất thuốc Tủ trực</span>
+      </a>
+      <% } %>
+
+      <div class="nav-section">Hoàn ứng</div>
+      <% if (!user || ['dieu_duong'].includes(user.vai_tro)) { %>
+      <a href="/hoan-ung/yeu-cau" class="nav-item <%= currentPath === '/hoan-ung/yeu-cau' ? 'active' : '' %>">
+        <i class="fas fa-undo-alt"></i><span>Lập yêu cầu hoàn ứng</span>
+      </a>
+      <% } %>
+      <% if (!user || ['duoc_si_kho_le'].includes(user.vai_tro)) { %>
+      <a href="/hoan-ung/duyet" class="nav-item <%= currentPath === '/hoan-ung/duyet' ? 'active' : '' %>">
+        <i class="fas fa-check-double"></i><span>Duyệt hoàn ứng</span>
+      </a>
+      <% } %>
+
+      <div class="nav-section">Báo cáo & Tổng hợp</div>
+      <% if (!user || ['ke_toan'].includes(user.vai_tro)) { %>
+      <a href="/chi-phi-noi-tru" class="nav-item <%= currentPath.startsWith('/chi-phi-noi-tru') ? 'active' : '' %>">
+        <i class="fas fa-calculator"></i><span>Tổng hợp CP Nội trú</span>
+      </a>
+      <a href="/quyet-toan" class="nav-item <%= currentPath.startsWith('/quyet-toan') ? 'active' : '' %>">
+        <i class="fas fa-file-invoice-dollar"></i><span>Quyết toán BHYT</span>
+      </a>
+      <a href="/xuat-xml" class="nav-item <%= currentPath.startsWith('/xuat-xml') ? 'active' : '' %>">
+        <i class="fas fa-file-code"></i><span>Xuất XML 130</span>
+      </a>
+      <% } %>
+      <% if (!user || ['duoc_si_tong','ke_toan'].includes(user.vai_tro)) { %>
+      <a href="/bao-cao" class="nav-item <%= currentPath.startsWith('/bao-cao') ? 'active' : '' %>">
+        <i class="fas fa-chart-bar"></i><span>Báo cáo thống kê</span>
+      </a>
+      <% } %>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="/logout" class="nav-item logout-btn">
+        <i class="fas fa-sign-out-alt"></i><span>Đăng xuất</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content" id="mainContent">
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <h1 class="page-title"><%= typeof title !== 'undefined' ? title : 'Tổng quan' %></h1>
+      </div>
+      <div class="top-bar-right">
+        <div class="shortcuts-hint" title="Phím tắt">
+          <i class="fas fa-keyboard"></i>
+          <span>F2: Thêm mới | F3: Tìm kiếm | Ctrl+S: Lưu</span>
+        </div>
+        <div class="datetime" id="currentDateTime"></div>
+      </div>
+    </header>
+
+    <!-- Flash Messages -->
+    <% if (success_msg && success_msg.length > 0) { %>
+    <div class="alert alert-success"><i class="fas fa-check-circle"></i><span><%= success_msg %></span><button class="alert-close" onclick="this.parentElement.remove()">×</button></div>
+    <% } %>
+    <% if (error_msg && error_msg.length > 0) { %>
+    <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i><span><%= error_msg %></span><button class="alert-close" onclick="this.parentElement.remove()">×</button></div>
+    <% } %>
+    <% if (warning_msg && warning_msg.length > 0) { %>
+    <div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i><span><%= warning_msg %></span><button class="alert-close" onclick="this.parentElement.remove()">×</button></div>
+    <% } %>
+
+    <div class="content-wrapper">
+      <%- body %>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

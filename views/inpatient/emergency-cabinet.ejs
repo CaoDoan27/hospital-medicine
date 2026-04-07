@@ -1,0 +1,23 @@
+<div class="card"><div class="card-header"><h2><i class="fas fa-first-aid"></i> Xuất thuốc Tủ trực - <%= khoa %></h2></div>
+<div class="card-body">
+  <form action="/tu-truc/xuat" method="POST">
+    <input type="hidden" name="kho_id" value="<%= khoId %>">
+    <div class="form-row">
+      <div class="form-group"><label>Bệnh nhân</label>
+        <select class="form-control" name="dot_dieu_tri_id" required>
+          <option value="">-- Chọn BN --</option>
+          <% patients.forEach(p => { %><option value="<%= p.dot_id %>"><%= p.ho_ten %> - <%= p.chan_doan_lam_sang %> (<%= p.so_the_bhyt || 'Không BHYT' %>)</option><% }) %>
+        </select></div>
+      <div class="form-group"><label>Thuốc</label>
+        <select class="form-control" name="thuoc_id" required>
+          <option value="">-- Chọn thuốc --</option>
+          <% stock.forEach(s => { %><option value="<%= s.thuoc_id %>"><%= s.ten_thuoc %> (<%= s.ham_luong %>) [Tồn: <%= s.so_luong_ton %> <%= s.don_vi_tinh %>]</option><% }) %>
+        </select></div>
+      <div class="form-group"><label>Số lượng</label><input type="number" class="form-control" name="so_luong" min="1" required></div>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-arrow-right"></i> Xuất thuốc</button>
+  </form>
+</div></div>
+<div class="card mt-2"><div class="card-header"><h2><i class="fas fa-box"></i> Tồn kho tủ trực</h2></div>
+<div class="card-body" style="padding:0"><table><thead><tr><th>Thuốc</th><th>ĐVT</th><th>Tồn</th><th>Đơn giá thầu</th></tr></thead>
+<tbody><% stock.forEach(s => { %><tr><td><%= s.ten_thuoc %> (<%= s.ham_luong %>)</td><td><%= s.don_vi_tinh %></td><td><%= s.so_luong_ton %></td><td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(s.don_gia_thau) %>đ</td></tr><% }) %></tbody></table></div></div>

@@ -1,0 +1,27 @@
+<div class="toolbar">
+  <select class="form-control" style="width:auto" onchange="window.location.href='/kiem-ke?kho_id='+this.value">
+    <% warehouses.forEach(w => { %><option value="<%= w.id %>" <%= khoId === w.id ? 'selected' : '' %>><%= w.ten_kho %></option><% }) %>
+  </select>
+  <form action="/kiem-ke/bat-dau" method="POST" style="display:inline" onsubmit="return confirm('Bắt đầu kiểm kê sẽ tạm khóa kho. Tiếp tục?')">
+    <input type="hidden" name="kho_id" value="<%= khoId %>">
+    <button class="btn btn-primary"><i class="fas fa-clipboard-check"></i> Bắt đầu kiểm kê</button>
+  </form>
+</div>
+<div class="grid-2">
+  <div class="card"><div class="card-header"><h2><i class="fas fa-exclamation-triangle text-warning"></i> Thuốc sắp hết hạn (< 6 tháng)</h2><span class="badge badge-warning"><%= expiringDrugs.length %></span></div>
+    <div class="card-body" style="padding:0"><div class="table-wrapper"><table><thead><tr><th>Tên thuốc</th><th>Lô</th><th>Hạn dùng</th><th>Tồn</th></tr></thead><tbody>
+    <% expiringDrugs.forEach(d => { const days = Math.ceil((new Date(d.han_dung) - new Date()) / 86400000); %>
+    <tr><td><%= d.ten_thuoc %></td><td><%= d.so_lo %></td><td class="<%= days <= 0 ? 'text-danger fw-bold' : 'text-warning' %>"><%= new Date(d.han_dung).toLocaleDateString('vi-VN') %><br><small><%= days <= 0 ? 'ĐÃ HẾT HẠN' : days + ' ngày' %></small></td><td><%= d.so_luong_ton %></td></tr>
+    <% }) %></tbody></table></div></div></div>
+  <div class="card"><div class="card-header"><h2><i class="fas fa-arrow-down text-danger"></i> Thuốc sắp hết tồn</h2><span class="badge badge-danger"><%= lowStock.length %></span></div>
+    <div class="card-body" style="padding:0"><div class="table-wrapper"><table><thead><tr><th>Tên thuốc</th><th>ĐVT</th><th>Tồn</th><th>Định mức</th></tr></thead><tbody>
+    <% lowStock.forEach(d => { %><tr><td><%= d.ten_thuoc %></td><td><%= d.don_vi_tinh %></td><td class="<%= d.tong_ton === 0 ? 'text-danger fw-bold' : 'text-warning' %>"><%= d.tong_ton %></td><td><%= d.dinh_muc_toi_thieu %></td></tr><% }) %>
+    </tbody></table></div></div></div>
+</div>
+<div class="card mt-2"><div class="card-header"><h2><i class="fas fa-history"></i> Lịch sử kiểm kê</h2></div>
+  <div class="card-body" style="padding:0"><div class="table-wrapper"><table><thead><tr><th>Kho</th><th>Người KK</th><th>Bắt đầu</th><th>Kết thúc</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
+  <% sessions.forEach(s => { %><tr><td><%= s.ten_kho %></td><td><%= s.ho_ten %></td><td><%= new Date(s.ngay_bat_dau).toLocaleString('vi-VN') %></td>
+    <td><%= s.ngay_ket_thuc ? new Date(s.ngay_ket_thuc).toLocaleString('vi-VN') : '-' %></td>
+    <td><span class="badge <%= s.trang_thai === 'hoan_thanh' ? 'badge-success' : 'badge-warning' %>"><%= s.trang_thai === 'hoan_thanh' ? 'Hoàn thành' : 'Đang thực hiện' %></span></td>
+    <td><% if (s.trang_thai === 'dang_thuc_hien') { %><a href="/kiem-ke/thuc-hien/<%= s.id %>" class="btn btn-sm btn-primary">Tiếp tục</a><% } %></td></tr><% }) %>
+  </tbody></table></div></div></div>

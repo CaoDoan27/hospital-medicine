@@ -1,0 +1,6 @@
+<div class="card"><div class="card-header"><h2><i class="fas fa-calculator"></i> Tổng hợp chi phí thuốc Nội trú</h2></div>
+<div class="card-body" style="padding:0"><table><thead><tr><th>Mã BN</th><th>Họ tên</th><th>Khoa</th><th>Ngày vào</th><th>Chẩn đoán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+<tbody><% patients.forEach(p => { %><tr><td><%= p.ma_benh_nhan %></td><td><strong><%= p.ho_ten %></strong></td><td><span class="badge badge-primary"><%= p.khoa %></span></td>
+<td><%= new Date(p.ngay_vao).toLocaleDateString('vi-VN') %></td><td><%= p.chan_doan_lam_sang %></td>
+<td><span class="badge <%= p.trang_thai_dt==='da_chot_vien_phi'?'badge-success':p.trang_thai_dt==='da_xuat_xml'?'badge-info':'badge-warning' %>"><%= p.trang_thai_dt==='dang_dieu_tri'?'Đang ĐT':p.trang_thai_dt==='da_chot_vien_phi'?'Đã chốt VP':'Đã xuất XML' %></span></td>
+<td><a href="/chi-phi-noi-tru/chi-tiet/<%= p.dot_id %>" class="btn btn-sm btn-primary"><i class="fas fa-eye"></i> Chi tiết</a></td></tr><% }) %></tbody></table></div></div>

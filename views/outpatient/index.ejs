@@ -1,0 +1,13 @@
+<div class="card"><div class="card-header"><h2><i class="fas fa-hand-holding-medical"></i> Đơn thuốc chờ cấp phát</h2></div>
+<div class="card-body" style="padding:0"><div class="table-wrapper"><table>
+  <thead><tr><th>#</th><th>Bệnh nhân</th><th>Thẻ BHYT</th><th>Chẩn đoán</th><th>Mã bệnh</th><th>Ngày kê</th><th>Thao tác</th></tr></thead>
+  <tbody>
+  <% if (!prescriptions.length) { %><tr><td colspan="7" class="text-center text-muted" style="padding:30px">Không có đơn thuốc chờ cấp phát</td></tr><% } %>
+  <% prescriptions.forEach((p,i) => { %>
+  <tr><td><%= i+1 %></td><td><strong><%= p.ho_ten %></strong></td>
+    <td><code><%= p.so_the_bhyt || 'Không có' %></code></td>
+    <td><%= p.chan_doan_lam_sang %></td><td><span class="badge badge-primary"><%= p.ma_benh %></span></td>
+    <td><%= new Date(p.ngay_ke).toLocaleDateString('vi-VN') %></td>
+    <td><a href="/cap-phat-ngoai-tru/don/<%= p.id %>" class="btn btn-sm btn-primary"><i class="fas fa-prescription"></i> Cấp phát</a></td></tr>
+  <% }) %></tbody>
+</table></div></div></div>

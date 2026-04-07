@@ -1,0 +1,14 @@
+<div class="card"><div class="card-header"><h2><i class="fas fa-file-code"></i> Xuất dữ liệu XML 130</h2></div>
+<div class="card-body">
+  <form action="/xuat-xml/generate" method="POST">
+    <p class="mb-2">Chọn đợt điều trị đã chốt viện phí để xuất XML theo chuẩn QĐ 4750/QĐ-BYT:</p>
+    <table><thead><tr><th><input type="checkbox" id="checkAll" onchange="document.querySelectorAll('.xml-check').forEach(c=>c.checked=this.checked)"></th><th>Bệnh nhân</th><th>Thẻ BHYT</th><th>Loại hình</th><th>Ngày vào</th><th>Mã bệnh</th><th>Trạng thái</th></tr></thead>
+    <tbody><% if(!eligible.length){%><tr><td colspan="7" class="text-center text-muted" style="padding:30px">Không có đợt điều trị đủ điều kiện xuất XML</td></tr><%}%>
+    <% eligible.forEach(e => { %><tr><td><input type="checkbox" name="dot_ids" value="<%= e.id %>" class="xml-check" <%= e.trang_thai==='da_xuat_xml'?'disabled':'' %>></td>
+    <td><strong><%= e.ho_ten %></strong></td><td><code><%= e.so_the_bhyt || '-' %></code></td>
+    <td><span class="badge <%= e.loai_hinh==='ngoai_tru'?'badge-info':'badge-warning' %>"><%= e.loai_hinh==='ngoai_tru'?'Ngoại trú':'Nội trú' %></span></td>
+    <td><%= new Date(e.ngay_vao).toLocaleDateString('vi-VN') %></td><td><%= e.ma_benh %></td>
+    <td><span class="badge <%= e.trang_thai==='da_xuat_xml'?'badge-success':'badge-primary' %>"><%= e.trang_thai==='da_xuat_xml'?'Đã xuất':'Chờ xuất' %></span></td></tr><% }) %></tbody></table>
+    <div class="btn-group mt-2"><button type="submit" class="btn btn-success btn-lg"><i class="fas fa-download"></i> Xuất XML 130</button></div>
+  </form>
+</div></div>

@@ -1,0 +1,6 @@
+<div class="card"><div class="card-header"><h2><i class="fas fa-check-double"></i> Phiếu hoàn ứng chờ duyệt</h2></div>
+<div class="card-body" style="padding:0"><table><thead><tr><th>Mã</th><th>Tủ trực</th><th>Người lập</th><th>Ngày</th><th>Thao tác</th></tr></thead>
+<tbody><% if(!requests.length){%><tr><td colspan="5" class="text-center text-muted" style="padding:30px">Không có phiếu chờ duyệt</td></tr><%}%>
+<% requests.forEach(r => { %><tr><td>HU-<%= r.id %></td><td><%= r.ten_kho %></td><td><%= r.nguoi_lap %></td><td><%= new Date(r.ngay_lap).toLocaleString('vi-VN') %></td>
+<td><form action="/hoan-ung/duyet/xac-nhan/<%= r.id %>" method="POST" style="display:inline" onsubmit="return confirm('Duyệt hoàn ứng?')">
+  <button class="btn btn-sm btn-success"><i class="fas fa-check"></i> Duyệt</button></form></td></tr><% }) %></tbody></table></div></div>

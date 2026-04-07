@@ -1,0 +1,19 @@
+<div class="card mb-2"><div class="card-header"><h2><i class="fas fa-user"></i> <%= dotDT.ho_ten %> - <%= dotDT.so_the_bhyt || 'Không BHYT' %></h2><a href="/chi-phi-noi-tru" class="btn btn-outline btn-sm">Quay lại</a></div>
+<div class="card-body">
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-hospital"></i></div><div class="stat-info"><h3>BHYT chi trả</h3><div class="stat-value text-success"><%= new Intl.NumberFormat('vi-VN').format(tongBHYT) %>đ</div></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-hand-holding-usd"></i></div><div class="stat-info"><h3>BN đồng chi trả</h3><div class="stat-value text-warning"><%= new Intl.NumberFormat('vi-VN').format(tongBNCCT) %>đ</div></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-wallet"></i></div><div class="stat-info"><h3>BN tự túc</h3><div class="stat-value text-danger"><%= new Intl.NumberFormat('vi-VN').format(tongBNTT) %>đ</div></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="fas fa-coins"></i></div><div class="stat-info"><h3>Tổng</h3><div class="stat-value"><%= new Intl.NumberFormat('vi-VN').format(tongBHYT+tongBNCCT+tongBNTT) %>đ</div></div></div>
+  </div>
+</div></div>
+<div class="card"><div class="card-header"><h2><i class="fas fa-list"></i> Chi tiết thuốc sử dụng</h2></div>
+<div class="card-body" style="padding:0"><table><thead><tr><th>#</th><th>Thuốc</th><th>SL</th><th>Đơn giá</th><th>TLTT</th><th>Mức hưởng</th><th>BHYT trả</th><th>BN đồng CT</th><th>BN tự túc</th><th>Nguồn</th></tr></thead>
+<tbody><% costs.forEach((c,i) => { %><tr><td><%= i+1 %></td><td><%= c.ten_thuoc %> (<%= c.ham_luong %>)</td><td><%= c.so_luong %> <%= c.don_vi_tinh %></td>
+<td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(c.don_gia) %></td><td><%= c.ty_le_tt %>%</td><td><%= c.muc_huong %>%</td>
+<td class="text-right text-success"><%= new Intl.NumberFormat('vi-VN').format(c.tien_bhyt) %></td>
+<td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(c.tien_bn_cung_tra) %></td>
+<td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(c.tien_bn_tu_tuc) %></td>
+<td><span class="badge badge-secondary"><%= c.nguon %></span></td></tr><% }) %></tbody></table></div></div>
+<% if(dotDT.trang_thai === 'dang_dieu_tri') { %>
+<form action="/chi-phi-noi-tru/chot/<%= dotDT.id %>" method="POST" class="mt-2"><button class="btn btn-success btn-lg" onclick="return confirm('Chốt viện phí thuốc? Sau khi chốt không thể thay đổi.')"><i class="fas fa-lock"></i> Chốt viện phí thuốc</button></form><% } %>

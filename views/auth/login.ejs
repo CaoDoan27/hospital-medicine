@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng nhập | Hệ thống Quản lý Dược</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <i class="fas fa-hospital"></i>
+      <h1>HIS Pharmacy</h1>
+      <p>Hệ thống Quản lý Cấp phát Thuốc</p>
+    </div>
+
+    <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length > 0) { %>
+      <div class="login-alert" style="background:#d1fae5;color:#065f46"><%= success_msg %></div>
+    <% } %>
+    <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length > 0) { %>
+      <div class="login-alert"><%= error_msg %></div>
+    <% } %>
+
+    <form action="/login" method="POST" id="loginForm">
+      <div class="form-group">
+        <label for="ten_dang_nhap"><i class="fas fa-user"></i> Tên đăng nhập</label>
+        <input type="text" class="form-control" id="ten_dang_nhap" name="ten_dang_nhap"
+               placeholder="Nhập tên đăng nhập" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="mat_khau"><i class="fas fa-lock"></i> Mật khẩu</label>
+        <input type="password" class="form-control" id="mat_khau" name="mat_khau"
+               placeholder="Nhập mật khẩu" required>
+      </div>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-sign-in-alt"></i> Đăng nhập
+      </button>
+    </form>
+
+    <div style="margin-top:24px;text-align:center;color:#94a3b8;font-size:0.8rem;">
+      <p>Tài khoản mẫu: <strong>ds.tong</strong> / <strong>123456</strong></p>
+      <p style="margin-top:4px;">
+        ds.khole | dd.noi | kt.vien (mật khẩu: 123456)
+      </p>
+    </div>
+  </div>
+</body>
+</html>

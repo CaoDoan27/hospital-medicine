@@ -1,0 +1,30 @@
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-exchange-alt"></i> Phiếu điều chuyển nội bộ</h2>
+    <% if (user && user.vai_tro === 'duoc_si_kho_le') { %>
+    <a href="/dieu-chuyen/tao" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tạo phiếu dự trù</a>
+    <% } %>
+  </div>
+  <div class="card-body" style="padding:0"><div class="table-wrapper"><table>
+    <thead><tr><th>#</th><th>Loại</th><th>Kho xuất</th><th>Kho nhận</th><th>Ngày lập</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>
+    <% if (!transfers.length) { %><tr><td colspan="7" class="text-center text-muted" style="padding:30px">Chưa có phiếu</td></tr><% } %>
+    <% transfers.forEach((t, i) => { %>
+    <tr><td><%= i+1 %></td>
+      <td><span class="badge <%= t.loai_phieu === 'DIEU_CHUYEN' ? 'badge-info' : 'badge-warning' %>"><%= t.loai_phieu === 'DIEU_CHUYEN' ? 'Điều chuyển' : 'Hoàn ứng' %></span></td>
+      <td><%= t.kho_xuat %></td><td><%= t.kho_nhan %></td>
+      <td><%= new Date(t.ngay_lap).toLocaleDateString('vi-VN') %></td>
+      <td><span class="badge <%= t.trang_thai === 'hoan_thanh' ? 'badge-success' : t.trang_thai === 'dang_van_chuyen' ? 'badge-warning' : t.trang_thai === 'tu_choi' ? 'badge-danger' : 'badge-secondary' %>">
+        <%= t.trang_thai === 'cho_duyet' ? 'Chờ duyệt' : t.trang_thai === 'dang_van_chuyen' ? 'Đang vận chuyển' : t.trang_thai === 'hoan_thanh' ? 'Hoàn thành' : 'Từ chối' %>
+      </span></td>
+      <td>
+        <% if (t.trang_thai === 'cho_duyet' && user.vai_tro === 'duoc_si_tong') { %>
+          <form action="/dieu-chuyen/duyet/<%= t.id %>" method="POST" style="display:inline"><button class="btn btn-sm btn-success"><i class="fas fa-check"></i> Duyệt</button></form>
+        <% } else if (t.trang_thai === 'dang_van_chuyen' && user.vai_tro === 'duoc_si_kho_le') { %>
+          <form action="/dieu-chuyen/xac-nhan/<%= t.id %>" method="POST" style="display:inline"><button class="btn btn-sm btn-primary"><i class="fas fa-check-double"></i> Xác nhận nhận</button></form>
+        <% } %>
+      </td></tr>
+    <% }) %>
+    </tbody>
+  </table></div></div>
+</div>

@@ -1,0 +1,18 @@
+<div class="card mb-2"><div class="card-header"><h2><i class="fas fa-file-invoice-dollar"></i> Quyết toán BHYT</h2></div>
+<div class="card-body">
+  <form method="GET" class="form-row" style="align-items:flex-end">
+    <div class="form-group"><label>Từ ngày</label><input type="date" class="form-control" name="tu_ngay" value="<%= tuNgay %>"></div>
+    <div class="form-group"><label>Đến ngày</label><input type="date" class="form-control" name="den_ngay" value="<%= denNgay %>"></div>
+    <div class="form-group"><label>Hình thức</label><select class="form-control" name="loai_hinh"><option value="">Tất cả</option><option value="ngoai_tru" <%= loaiHinh==='ngoai_tru'?'selected':'' %>>Ngoại trú</option><option value="noi_tru" <%= loaiHinh==='noi_tru'?'selected':'' %>>Nội trú</option><option value="tu_truc" <%= loaiHinh==='tu_truc'?'selected':'' %>>Tủ trực</option></select></div>
+    <div class="form-group"><button class="btn btn-primary"><i class="fas fa-search"></i> Xem</button></div>
+  </form>
+</div></div>
+<% if(data.length){ %>
+<div class="stats-grid"><div class="stat-card"><div class="stat-icon"><i class="fas fa-coins"></i></div><div class="stat-info"><h3>Tổng doanh thu</h3><div class="stat-value"><%= new Intl.NumberFormat('vi-VN').format(tongDoanhThu) %>đ</div></div></div>
+<div class="stat-card"><div class="stat-icon"><i class="fas fa-hospital"></i></div><div class="stat-info"><h3>BHYT chi trả</h3><div class="stat-value text-success"><%= new Intl.NumberFormat('vi-VN').format(tongBHYT) %>đ</div></div></div></div>
+<div class="card"><div class="card-body" style="padding:0"><table><thead><tr><th>Nguồn</th><th>Thuốc</th><th>ĐVT</th><th>Tổng SL</th><th>Tổng tiền</th><th>BHYT trả</th><th>BN đồng CT</th><th>BN tự túc</th></tr></thead>
+<tbody><% data.forEach(d => { %><tr><td><span class="badge badge-info"><%= d.nguon %></span></td><td><%= d.ten_thuoc %></td><td><%= d.don_vi_tinh %></td>
+<td><%= d.tong_sl %></td><td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(d.tong_tien) %></td>
+<td class="text-right text-success"><%= new Intl.NumberFormat('vi-VN').format(d.tong_bhyt) %></td>
+<td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(d.tong_bncct) %></td>
+<td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(d.tong_bntt) %></td></tr><% }) %></tbody></table></div></div><% } %>

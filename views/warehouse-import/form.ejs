@@ -1,0 +1,80 @@
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-file-import"></i> Tạo phiếu nhập kho</h2>
+    <a href="/nhap-kho" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+  </div>
+  <div class="card-body">
+    <form id="importForm" action="/nhap-kho/luu" method="POST">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Số hóa đơn <span class="required">*</span></label>
+          <input type="text" class="form-control" name="so_hoa_don" required>
+        </div>
+        <div class="form-group">
+          <label>Nhà cung cấp <span class="required">*</span></label>
+          <select class="form-control" name="nha_cung_cap_id" required>
+            <option value="">-- Chọn NCC --</option>
+            <% suppliers.forEach(s => { %><option value="<%= s.id %>"><%= s.ten_nha_cung_cap %></option><% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Kho nhập</label>
+          <select class="form-control" name="kho_id">
+            <% warehouses.forEach(w => { %><option value="<%= w.id %>"><%= w.ten_kho %></option><% }) %>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Ghi chú</label><textarea class="form-control" name="ghi_chu" rows="2"></textarea></div>
+
+      <h3 class="mb-1 mt-2" style="font-size:1rem"><i class="fas fa-list"></i> Chi tiết thuốc nhập</h3>
+      <div class="table-wrapper"><table id="itemsTable">
+        <thead><tr><th>Thuốc</th><th>Số lô</th><th>Hạn dùng</th><th>Số lượng</th><th>Đơn giá nhập</th><th>VAT(%)</th><th></th></tr></thead>
+        <tbody id="itemsBody"></tbody>
+      </table></div>
+      <button type="button" class="btn btn-outline btn-sm mt-1" onclick="addRow()"><i class="fas fa-plus"></i> Thêm dòng</button>
+
+      <input type="hidden" name="items" id="itemsInput">
+      <div class="btn-group mt-2">
+        <button type="submit" class="btn btn-primary" data-shortcut="save" onclick="prepareSubmit()"><i class="fas fa-save"></i> Lưu phiếu nhập (Ctrl+S)</button>
+        <a href="/nhap-kho" class="btn btn-outline">Hủy</a>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+const drugs = <%- JSON.stringify(drugs) %>;
+function addRow() {
+  const tbody = document.getElementById('itemsBody');
+  const row = document.createElement('tr');
+  let opts = '<option value="">-- Chọn --</option>';
+  drugs.forEach(d => { opts += `<option value="${d.id}" data-gia="${d.don_gia_thau}">${d.ten_thuoc} (${d.ham_luong || ''}) [${d.don_vi_tinh}]</option>`; });
+  row.innerHTML = `<td><select class="form-control drug-select" onchange="onDrugSelect(this)">${opts}</select></td>
+    <td><input type="text" class="form-control so-lo" required placeholder="VD: ABC2024"></td>
+    <td><input type="date" class="form-control han-dung" required></td>
+    <td><input type="number" class="form-control so-luong" min="1" required></td>
+    <td><input type="number" class="form-control don-gia" step="0.01" min="0" required></td>
+    <td><input type="number" class="form-control vat" value="5" min="0" max="100"></td>
+    <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>`;
+  tbody.appendChild(row);
+}
+function onDrugSelect(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  const row = sel.closest('tr');
+  row.querySelector('.don-gia').value = opt.dataset.gia || '';
+}
+function prepareSubmit() {
+  const rows = document.querySelectorAll('#itemsBody tr');
+  const items = [];
+  rows.forEach(row => {
+    const thuocId = row.querySelector('.drug-select').value;
+    if (!thuocId) return;
+    items.push({
+      thuoc_id: thuocId, so_lo: row.querySelector('.so-lo').value,
+      han_dung: row.querySelector('.han-dung').value, so_luong: row.querySelector('.so-luong').value,
+      don_gia: row.querySelector('.don-gia').value, thue_vat: row.querySelector('.vat').value
+    });
+  });
+  document.getElementById('itemsInput').value = JSON.stringify(items);
+}
+addRow();
+</script>

@@ -1,0 +1,125 @@
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-pills"></i></div>
+    <div class="stat-info">
+      <h3>Danh mục Thuốc</h3>
+      <div class="stat-value"><%= stats.drugs || 0 %></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-users"></i></div>
+    <div class="stat-info">
+      <h3>Bệnh nhân</h3>
+      <div class="stat-value"><%= stats.patients || 0 %></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-warehouse"></i></div>
+    <div class="stat-info">
+      <h3>Phiếu nhập hôm nay</h3>
+      <div class="stat-value"><%= stats.importsToday || 0 %></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="fas fa-hand-holding-medical"></i></div>
+    <div class="stat-info">
+      <h3>Đơn đã cấp hôm nay</h3>
+      <div class="stat-value"><%= stats.dispensedToday || 0 %></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Thuốc sắp hết hạn -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-exclamation-triangle text-warning"></i> Thuốc sắp hết hạn</h2>
+      <span class="badge badge-warning"><%= expiringDrugs.length %> thuốc</span>
+    </div>
+    <div class="card-body">
+      <% if (expiringDrugs.length === 0) { %>
+        <div class="empty-state"><i class="fas fa-check-circle text-success"></i><p>Không có thuốc sắp hết hạn</p></div>
+      <% } else { %>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Tên thuốc</th><th>Số lô</th><th>Hạn dùng</th><th>Tồn</th><th>Kho</th></tr></thead>
+          <tbody>
+          <% expiringDrugs.forEach(d => {
+            const expDate = new Date(d.han_dung);
+            const now = new Date();
+            const diffMonths = (expDate.getFullYear() - now.getFullYear()) * 12 + expDate.getMonth() - now.getMonth();
+            const cls = diffMonths <= 0 ? 'text-danger fw-bold' : diffMonths <= 3 ? 'text-warning' : '';
+          %>
+            <tr>
+              <td><%= d.ten_thuoc %></td>
+              <td><%= d.so_lo %></td>
+              <td class="<%= cls %>"><%= new Date(d.han_dung).toLocaleDateString('vi-VN') %></td>
+              <td><%= d.so_luong_ton %></td>
+              <td><%= d.ten_kho %></td>
+            </tr>
+          <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Thuốc tồn kho thấp -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-arrow-down text-danger"></i> Thuốc sắp hết tồn</h2>
+      <span class="badge badge-danger"><%= lowStockDrugs.length %> thuốc</span>
+    </div>
+    <div class="card-body">
+      <% if (lowStockDrugs.length === 0) { %>
+        <div class="empty-state"><i class="fas fa-check-circle text-success"></i><p>Tồn kho đầy đủ</p></div>
+      <% } else { %>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Tên thuốc</th><th>ĐVT</th><th>Tồn kho</th><th>Định mức</th></tr></thead>
+          <tbody>
+          <% lowStockDrugs.forEach(d => { %>
+            <tr>
+              <td><%= d.ten_thuoc %></td>
+              <td><%= d.don_vi_tinh %></td>
+              <td class="<%= d.tong_ton === 0 ? 'text-danger fw-bold' : 'text-warning' %>"><%= d.tong_ton %></td>
+              <td><%= d.dinh_muc_toi_thieu %></td>
+            </tr>
+          <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<!-- Bệnh nhân nội trú -->
+<div class="card mt-3">
+  <div class="card-header">
+    <h2><i class="fas fa-procedures"></i> Bệnh nhân Nội trú đang điều trị</h2>
+    <span class="badge badge-info"><%= inpatients.length %> bệnh nhân</span>
+  </div>
+  <div class="card-body">
+    <% if (inpatients.length === 0) { %>
+      <div class="empty-state"><i class="fas fa-bed"></i><p>Không có bệnh nhân nội trú</p></div>
+    <% } else { %>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Họ tên</th><th>Khoa</th><th>Ngày vào</th><th>Chẩn đoán</th></tr></thead>
+        <tbody>
+        <% inpatients.forEach(p => { %>
+          <tr>
+            <td><strong><%= p.ho_ten %></strong></td>
+            <td><span class="badge badge-primary"><%= p.khoa %></span></td>
+            <td><%= new Date(p.ngay_vao).toLocaleDateString('vi-VN') %></td>
+            <td><%= p.chan_doan_lam_sang %></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+</div>

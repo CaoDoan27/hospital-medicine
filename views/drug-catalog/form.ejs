@@ -1,0 +1,101 @@
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-<%= mode === 'create' ? 'plus-circle' : 'edit' %>"></i> <%= mode === 'create' ? 'Thêm Thuốc mới' : 'Sửa thông tin Thuốc' %></h2>
+    <a href="/danh-muc-thuoc" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+  </div>
+  <div class="card-body">
+    <form action="/danh-muc-thuoc/luu" method="POST">
+      <% if (drug) { %><input type="hidden" name="id" value="<%= drug.id %>"><% } %>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mã BHYT <span class="required">*</span></label>
+          <input type="text" class="form-control" name="ma_bhyt" value="<%= drug ? drug.ma_bhyt : '' %>"
+                 required maxlength="15" minlength="15" placeholder="15 ký tự">
+          <div class="form-text">Phải đúng 15 ký tự theo danh mục BHYT</div>
+        </div>
+        <div class="form-group">
+          <label>Tên thuốc <span class="required">*</span></label>
+          <input type="text" class="form-control" name="ten_thuoc" value="<%= drug ? drug.ten_thuoc : '' %>" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Hoạt chất</label>
+          <input type="text" class="form-control" name="hoat_chat" value="<%= drug ? drug.hoat_chat : '' %>">
+        </div>
+        <div class="form-group">
+          <label>Hàm lượng</label>
+          <input type="text" class="form-control" name="ham_luong" value="<%= drug ? drug.ham_luong : '' %>" placeholder="VD: 500mg">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Đơn vị tính <span class="required">*</span></label>
+          <select class="form-control" name="don_vi_tinh" required>
+            <option value="">-- Chọn --</option>
+            <% ['Viên','Ống','Lọ','Chai','Gói','Tuýp','Hộp'].forEach(u => { %>
+              <option value="<%= u %>" <%= drug && drug.don_vi_tinh === u ? 'selected' : '' %>><%= u %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Đường dùng</label>
+          <select class="form-control" name="duong_dung">
+            <option value="">-- Chọn --</option>
+            <% ['Uống','Tiêm tĩnh mạch','Tiêm dưới da','Tiêm bắp','Hít','Truyền tĩnh mạch','Dùng ngoài','Nhỏ mắt','Đặt hậu môn'].forEach(r => { %>
+              <option value="<%= r %>" <%= drug && drug.duong_dung === r ? 'selected' : '' %>><%= r %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Đơn giá thầu (VNĐ) <span class="required">*</span></label>
+          <input type="number" class="form-control" name="don_gia_thau" value="<%= drug ? drug.don_gia_thau : '' %>"
+                 required min="1" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Tỷ lệ thanh toán BHYT (%)</label>
+          <select class="form-control" name="ty_le_thanh_toan">
+            <% [100, 50, 30, 0].forEach(r => { %>
+              <option value="<%= r %>" <%= drug && drug.ty_le_thanh_toan === r ? 'selected' : (!drug && r === 100 ? 'selected' : '') %>><%= r %>%</option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nhóm thuốc</label>
+          <input type="text" class="form-control" name="nhom_thuoc" value="<%= drug ? drug.nhom_thuoc : '' %>" placeholder="VD: Tim mạch, Kháng sinh">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Số đăng ký</label>
+          <input type="text" class="form-control" name="so_dang_ky" value="<%= drug ? drug.so_dang_ky : '' %>">
+        </div>
+        <div class="form-group">
+          <label>Nước sản xuất</label>
+          <input type="text" class="form-control" name="nuoc_san_xuat" value="<%= drug ? drug.nuoc_san_xuat : '' %>">
+        </div>
+        <div class="form-group">
+          <label>Hãng sản xuất</label>
+          <input type="text" class="form-control" name="hang_san_xuat" value="<%= drug ? drug.hang_san_xuat : '' %>">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Định mức tồn kho tối thiểu</label>
+        <input type="number" class="form-control" name="dinh_muc_toi_thieu" value="<%= drug ? drug.dinh_muc_toi_thieu : 10 %>" min="0" style="max-width:200px">
+      </div>
+
+      <div class="btn-group mt-2">
+        <button type="submit" class="btn btn-primary" data-shortcut="save"><i class="fas fa-save"></i> Lưu (Ctrl+S)</button>
+        <a href="/danh-muc-thuoc" class="btn btn-outline"><i class="fas fa-times"></i> Hủy</a>
+      </div>
+    </form>
+  </div>
+</div>

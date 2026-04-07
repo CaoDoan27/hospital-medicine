@@ -1,0 +1,11 @@
+<div class="card"><div class="card-header"><h2><i class="fas fa-eye"></i> Chi tiết phiếu lĩnh PL-<%= phieu.id %></h2><a href="/cap-phat-noi-tru" class="btn btn-outline btn-sm">Quay lại</a></div>
+<div class="card-body">
+  <table><thead><tr><th>Thuốc</th><th>ĐVT</th><th>SL yêu cầu</th><th>Gợi ý FEFO</th><th>Đơn giá thầu</th></tr></thead>
+  <tbody><% details.forEach(d => { %><tr><td><strong><%= d.ten_thuoc %></strong> (<%= d.ham_luong %>)</td><td><%= d.don_vi_tinh %></td><td class="text-center"><%= d.so_luong_yeu_cau %></td>
+    <td><% if(d.fefo_suggestion && d.fefo_suggestion.success) { d.fefo_suggestion.allocation.forEach(a => { %><span class="badge badge-info">Lô <%= a.so_lo %> (HSD: <%= new Date(a.han_dung).toLocaleDateString('vi-VN') %>) × <%= a.so_luong_xuat %></span> <% }) } else { %><span class="badge badge-danger">Không đủ tồn</span><% } %></td>
+    <td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(d.don_gia_thau) %>đ</td></tr><% }) %></tbody></table>
+  <% if(phieu.trang_thai === 'dang_cho_duyet') { %>
+  <form action="/cap-phat-noi-tru/xac-nhan/<%= phieu.id %>" method="POST" class="mt-2">
+    <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Xác nhận cấp phát nội trú?')"><i class="fas fa-check-circle"></i> Xác nhận cấp phát</button>
+  </form><% } %>
+</div></div>

@@ -1,0 +1,17 @@
+<div class="card"><div class="card-header"><h2><i class="fas fa-undo-alt"></i> Hàng chờ hoàn ứng - <%= khoa %></h2></div>
+<div class="card-body">
+  <% if(!pendingItems.length){ %><div class="empty-state"><i class="fas fa-check-circle"></i><p>Không có hàng chờ hoàn ứng</p></div><% } else { %>
+  <form action="/hoan-ung/yeu-cau/luu" method="POST">
+    <input type="hidden" name="kho_id" value="<%= khoId %>"><input type="hidden" name="khoa" value="<%= khoa %>">
+    <table><thead><tr><th>Thuốc</th><th>ĐVT</th><th>Tổng SL chờ</th><th>SL yêu cầu</th></tr></thead>
+    <tbody><% pendingItems.forEach(p => { %><tr><td><%= p.ten_thuoc %></td><td><%= p.don_vi_tinh %></td><td><%= p.tong_sl %></td>
+    <td><input type="number" class="form-control sl" value="<%= p.tong_sl %>" min="1" data-id="<%= p.thuoc_id %>"></td></tr><% }) %></tbody></table>
+    <input type="hidden" name="items" id="itemsData">
+    <button type="submit" class="btn btn-primary mt-2" onclick="const items=[];document.querySelectorAll('.sl').forEach(i=>items.push({thuoc_id:i.dataset.id,so_luong:i.value}));document.getElementById('itemsData').value=JSON.stringify(items)">
+    <i class="fas fa-paper-plane"></i> Gửi yêu cầu hoàn ứng</button>
+  </form><% } %>
+</div></div>
+<div class="card mt-2"><div class="card-header"><h2><i class="fas fa-history"></i> Yêu cầu gần đây</h2></div>
+<div class="card-body" style="padding:0"><table><thead><tr><th>Mã</th><th>Người lập</th><th>Ngày</th><th>Trạng thái</th></tr></thead>
+<tbody><% existingRequests.forEach(r => { %><tr><td>HU-<%= r.id %></td><td><%= r.nguoi_lap %></td><td><%= new Date(r.ngay_lap).toLocaleString('vi-VN') %></td>
+<td><span class="badge <%= r.trang_thai==='da_hoan_thanh'?'badge-success':r.trang_thai==='tu_choi'?'badge-danger':'badge-warning' %>"><%= r.trang_thai==='cho_duyet'?'Chờ duyệt':r.trang_thai==='da_hoan_thanh'?'Hoàn thành':'Từ chối' %></span></td></tr><% }) %></tbody></table></div></div>

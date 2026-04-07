@@ -1,0 +1,69 @@
+<div class="toolbar">
+  <div class="search-box">
+    <i class="fas fa-search"></i>
+    <input type="text" placeholder="Tìm thuốc (tên, mã BHYT, hoạt chất)..." value="<%= search %>"
+           data-shortcut="search" onkeydown="if(event.key==='Enter') window.location.href='/danh-muc-thuoc?search='+this.value+'&nhom=<%= nhom %>'">
+  </div>
+  <select class="form-control" style="width:auto;min-width:180px" onchange="window.location.href='/danh-muc-thuoc?search=<%= search %>&nhom='+this.value">
+    <option value="">-- Tất cả nhóm --</option>
+    <% groups.forEach(g => { %>
+      <option value="<%= g.nhom_thuoc %>" <%= nhom === g.nhom_thuoc ? 'selected' : '' %>><%= g.nhom_thuoc %></option>
+    <% }) %>
+  </select>
+  <a href="/danh-muc-thuoc/them" class="btn btn-primary" data-shortcut="new">
+    <i class="fas fa-plus"></i> Thêm thuốc (F2)
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-pills"></i> Danh mục Thuốc</h2>
+    <span class="badge badge-info"><%= drugs.length %> thuốc</span>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Mã BHYT</th>
+            <th>Tên thuốc</th>
+            <th>Hoạt chất</th>
+            <th>ĐVT</th>
+            <th>Đường dùng</th>
+            <th>Đơn giá thầu</th>
+            <th>TLTT</th>
+            <th>Nhóm</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (drugs.length === 0) { %>
+            <tr><td colspan="10" class="text-center text-muted" style="padding:30px">Không có dữ liệu</td></tr>
+          <% } %>
+          <% drugs.forEach((d, i) => { %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td><code style="font-size:0.8rem"><%= d.ma_bhyt %></code></td>
+            <td><strong><%= d.ten_thuoc %></strong><% if (d.ham_luong) { %><br><small class="text-muted"><%= d.ham_luong %></small><% } %></td>
+            <td><small><%= d.hoat_chat || '' %></small></td>
+            <td><%= d.don_vi_tinh %></td>
+            <td><%= d.duong_dung || '' %></td>
+            <td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(d.don_gia_thau) %>đ</td>
+            <td class="text-center"><span class="badge <%= d.ty_le_thanh_toan === 100 ? 'badge-success' : 'badge-warning' %>"><%= d.ty_le_thanh_toan %>%</span></td>
+            <td><span class="badge badge-secondary"><%= d.nhom_thuoc || '' %></span></td>
+            <td>
+              <div class="btn-group">
+                <a href="/danh-muc-thuoc/sua/<%= d.id %>" class="btn btn-sm btn-outline" title="Sửa"><i class="fas fa-edit"></i></a>
+                <form action="/danh-muc-thuoc/xoa/<%= d.id %>" method="POST" style="display:inline" onsubmit="return confirmDelete('Xác nhận xóa thuốc này?')">
+                  <button type="submit" class="btn btn-sm btn-danger" title="Xóa"><i class="fas fa-trash"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

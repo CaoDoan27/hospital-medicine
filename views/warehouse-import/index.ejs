@@ -1,0 +1,19 @@
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-warehouse"></i> Phiếu nhập kho</h2>
+    <a href="/nhap-kho/tao" class="btn btn-primary" data-shortcut="new"><i class="fas fa-plus"></i> Tạo phiếu nhập (F2)</a>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div class="table-wrapper"><table>
+      <thead><tr><th>#</th><th>Số HĐ</th><th>Nhà cung cấp</th><th>Kho nhập</th><th>Ngày lập</th><th>Tổng tiền</th><th>Người lập</th></tr></thead>
+      <tbody>
+      <% if (receipts.length === 0) { %><tr><td colspan="7" class="text-center text-muted" style="padding:30px">Chưa có phiếu nhập kho</td></tr><% } %>
+      <% receipts.forEach((r, i) => { %>
+        <tr><td><%= i+1 %></td><td><strong><%= r.so_hoa_don %></strong></td><td><%= r.ten_nha_cung_cap %></td><td><%= r.ten_kho %></td>
+        <td><%= new Date(r.ngay_lap).toLocaleDateString('vi-VN') %></td>
+        <td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(r.tong_tien) %>đ</td><td><%= r.nguoi_lap %></td></tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+  </div>
+</div>

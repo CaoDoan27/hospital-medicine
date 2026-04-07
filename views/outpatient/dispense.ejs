@@ -1,0 +1,41 @@
+<div class="card mb-2"><div class="card-header"><h2><i class="fas fa-user"></i> Thông tin bệnh nhân & BHYT</h2></div>
+<div class="card-body">
+  <div class="form-row">
+    <div class="form-group"><label>Họ tên</label><input class="form-control" value="<%= rx.ho_ten %>" disabled></div>
+    <div class="form-group"><label>Thẻ BHYT</label><input class="form-control" value="<%= rx.so_the_bhyt || 'Không có' %>" disabled></div>
+    <div class="form-group"><label>Trạng thái thẻ</label>
+      <span class="badge <%= insuranceData.valid ? 'badge-success' : 'badge-danger' %>" style="font-size:0.9rem;padding:8px 16px"><%= insuranceData.message %></span></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Chẩn đoán</label><input class="form-control" value="<%= rx.chan_doan_lam_sang %>" disabled></div>
+    <div class="form-group"><label>Mã bệnh ICD-10</label><input class="form-control" value="<%= rx.ma_benh %>" disabled></div>
+    <div class="form-group"><label>Mức hưởng BHYT</label>
+      <span class="badge badge-info" style="font-size:1.2rem;padding:8px 20px"><%= mucHuong %>%</span></div>
+  </div>
+</div></div>
+
+<div class="card"><div class="card-header"><h2><i class="fas fa-pills"></i> Cấp phát thuốc</h2><a href="/cap-phat-ngoai-tru" class="btn btn-outline btn-sm">Quay lại</a></div>
+<div class="card-body">
+  <form action="/cap-phat-ngoai-tru/cap-phat" method="POST">
+    <input type="hidden" name="don_thuoc_id" value="<%= rx.id %>">
+    <input type="hidden" name="muc_huong" value="<%= mucHuong %>">
+    <table><thead><tr><th>Thuốc</th><th>Tồn kho</th><th>SL cấp</th><th>Đơn giá</th><th>BHYT trả</th><th>BN đồng CT</th><th>BN tự túc</th><th></th></tr></thead>
+    <tbody id="dispItems"></tbody></table>
+    <button type="button" class="btn btn-outline btn-sm mt-1" onclick="addDispItem()"><i class="fas fa-plus"></i> Thêm thuốc</button>
+    <input type="hidden" name="items" id="itemsInput">
+    <div class="btn-group mt-2"><button type="submit" class="btn btn-success btn-lg" onclick="prepareSubmit()"><i class="fas fa-check-circle"></i> Xác nhận cấp phát</button></div>
+  </form>
+</div></div>
+<script>
+const drugs = <%- JSON.stringify(drugs) %>;
+const mucHuong = <%= mucHuong %>;
+function addDispItem(){const tbody=document.getElementById('dispItems');const tr=document.createElement('tr');let opts='<option value="">-- Chọn --</option>';drugs.forEach(d=>{opts+=`<option value="${d.id}" data-gia="${d.don_gia_thau}" data-tltt="${d.ty_le_thanh_toan}" data-ton="${d.ton_kho}">${d.ten_thuoc} (${d.ham_luong||''}) [${d.don_vi_tinh}]</option>`;});
+tr.innerHTML=`<td><select class="form-control drug-sel" onchange="calcCost(this.closest('tr'))">${opts}</select></td><td class="ton">-</td><td><input type="number" class="form-control sl" min="1" value="1" onchange="calcCost(this.closest('tr'))"></td><td class="gia">-</td><td class="bhyt">-</td><td class="bncct">-</td><td class="bntt">-</td><td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()">×</button></td>`;
+tbody.appendChild(tr);}
+function calcCost(tr){const sel=tr.querySelector('.drug-sel');const opt=sel.options[sel.selectedIndex];const sl=parseInt(tr.querySelector('.sl').value)||0;const gia=parseFloat(opt.dataset.gia)||0;const tltt=(parseFloat(opt.dataset.tltt)||100)/100;const mh=mucHuong/100;
+tr.querySelector('.ton').textContent=opt.dataset.ton||'-';tr.querySelector('.gia').textContent=new Intl.NumberFormat('vi-VN').format(gia);
+const bhyt=Math.round(sl*gia*tltt*mh);const bncct=Math.round(sl*gia*tltt)-bhyt;const bntt=Math.max(0,Math.round(sl*gia)-bhyt-bncct);
+tr.querySelector('.bhyt').textContent=new Intl.NumberFormat('vi-VN').format(bhyt);tr.querySelector('.bncct').textContent=new Intl.NumberFormat('vi-VN').format(bncct);tr.querySelector('.bntt').textContent=new Intl.NumberFormat('vi-VN').format(bntt);}
+function prepareSubmit(){const rows=document.querySelectorAll('#dispItems tr');const items=[];rows.forEach(r=>{const id=r.querySelector('.drug-sel').value;if(id)items.push({thuoc_id:id,so_luong:r.querySelector('.sl').value});});document.getElementById('itemsInput').value=JSON.stringify(items);}
+addDispItem();
+</script>

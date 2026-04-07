@@ -1,0 +1,25 @@
+<div class="card mb-2"><div class="card-header"><h2><i class="fas fa-chart-bar"></i> Báo cáo thống kê</h2></div>
+<div class="card-body">
+  <form method="GET" class="form-row" style="align-items:flex-end">
+    <div class="form-group"><label>Loại báo cáo</label>
+      <select class="form-control" name="loai"><option value="nxt" <%= loai==='nxt'?'selected':'' %>>Nhập - Xuất - Tồn</option><option value="han_dung" <%= loai==='han_dung'?'selected':'' %>>Hạn dùng</option></select></div>
+    <div class="form-group"><label>Kho</label>
+      <select class="form-control" name="kho_id"><% warehouses.forEach(w => { %><option value="<%= w.id %>" <%= khoId===w.id?'selected':'' %>><%= w.ten_kho %></option><% }) %></select></div>
+    <div class="form-group"><label>Từ ngày</label><input type="date" class="form-control" name="tu_ngay" value="<%= tuNgay %>"></div>
+    <div class="form-group"><label>Đến ngày</label><input type="date" class="form-control" name="den_ngay" value="<%= denNgay %>"></div>
+    <div class="form-group"><button class="btn btn-primary"><i class="fas fa-search"></i> Xem báo cáo</button></div>
+  </form>
+</div></div>
+<% if(reportData.length){ %>
+<div class="card"><div class="card-header"><h2><%= loai==='nxt'?'Báo cáo N-X-T':'Báo cáo Hạn dùng' %></h2><span class="badge badge-info"><%= reportData.length %> dòng</span></div>
+<div class="card-body" style="padding:0"><div class="table-wrapper"><table>
+<% if(loai==='nxt'){ %><thead><tr><th>#</th><th>Tên thuốc</th><th>ĐVT</th><th>Nhập</th><th>Xuất</th><th>Tồn cuối</th></tr></thead>
+<tbody><% reportData.forEach((r,i) => { %><tr><td><%= i+1 %></td><td><%= r.ten_thuoc %></td><td><%= r.don_vi_tinh %></td>
+<td class="text-right text-success"><%= r.nhap %></td><td class="text-right text-danger"><%= r.xuat %></td><td class="text-right fw-bold"><%= r.ton_cuoi %></td></tr><% }) %></tbody>
+<% } else { %><thead><tr><th>#</th><th>Tên thuốc</th><th>ĐVT</th><th>Số lô</th><th>Hạn dùng</th><th>Ngày còn lại</th><th>Tồn</th></tr></thead>
+<tbody><% reportData.forEach((r,i) => { %><tr><td><%= i+1 %></td><td><%= r.ten_thuoc %></td><td><%= r.don_vi_tinh %></td><td><%= r.so_lo %></td>
+<td><%= new Date(r.han_dung).toLocaleDateString('vi-VN') %></td>
+<td class="<%= r.ngay_con_lai<=0?'text-danger fw-bold':r.ngay_con_lai<=90?'text-warning':'' %>"><%= r.ngay_con_lai <= 0 ? 'HẾT HẠN' : r.ngay_con_lai + ' ngày' %></td>
+<td><%= r.so_luong_ton %></td></tr><% }) %></tbody><% } %>
+</table></div></div></div>
+<% } %>

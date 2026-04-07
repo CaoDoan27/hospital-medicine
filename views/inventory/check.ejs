@@ -1,0 +1,20 @@
+<div class="card"><div class="card-header"><h2><i class="fas fa-clipboard-check"></i> Kiểm kê: <%= session.ten_kho %></h2><a href="/kiem-ke" class="btn btn-outline btn-sm">Quay lại</a></div>
+<div class="card-body">
+  <form action="/kiem-ke/hoan-tat/<%= session.id %>" method="POST">
+    <div class="table-wrapper"><table><thead><tr><th>#</th><th>Tên thuốc</th><th>ĐVT</th><th>Số lô</th><th>SL Hệ thống</th><th>SL Thực tế</th><th>Chênh lệch</th></tr></thead>
+    <tbody>
+    <% details.forEach((d, i) => { %><tr>
+      <td><%= i+1 %></td><td><%= d.ten_thuoc %></td><td><%= d.don_vi_tinh %></td><td><%= d.so_lo %></td>
+      <td class="text-center"><%= d.so_luong_he_thong %></td>
+      <td><input type="number" class="form-control actual" value="<%= d.so_luong_thuc_te != null ? d.so_luong_thuc_te : '' %>" min="0" data-system="<%= d.so_luong_he_thong %>" onchange="updateDiff(this)"></td>
+      <td class="diff text-center">-</td>
+    </tr><% }) %></tbody></table></div>
+    <input type="hidden" name="items" id="itemsData">
+    <div class="btn-group mt-2"><button type="submit" class="btn btn-success" onclick="prepareData()"><i class="fas fa-check"></i> Hoàn tất kiểm kê</button></div>
+  </form>
+</div></div>
+<script>
+function updateDiff(input){const sys=parseInt(input.dataset.system);const act=parseInt(input.value)||0;const diff=act-sys;const cell=input.closest('tr').querySelector('.diff');cell.textContent=diff;cell.className='diff text-center '+(diff<0?'text-danger fw-bold':diff>0?'text-success':'');}
+function prepareData(){const rows=document.querySelectorAll('tbody tr');const items=[];const details=<%- JSON.stringify(details) %>;rows.forEach((r,i)=>{const actual=r.querySelector('.actual').value;if(actual!=='')items.push({id:details[i].id,lo_thuoc_id:details[i].lo_thuoc_id,thuoc_id:details[i].thuoc_id,so_luong_thuc_te:actual});});document.getElementById('itemsData').value=JSON.stringify(items);}
+document.querySelectorAll('.actual').forEach(i=>updateDiff(i));
+</script>
