@@ -6,7 +6,7 @@
     <% details.forEach((d, i) => { %><tr>
       <td><%= i+1 %></td><td><%= d.ten_thuoc %></td><td><%= d.don_vi_tinh %></td><td><%= d.so_lo %></td>
       <td class="text-center"><%= d.so_luong_he_thong %></td>
-      <td><input type="number" class="form-control actual" value="<%= d.so_luong_thuc_te != null ? d.so_luong_thuc_te : '' %>" min="0" data-system="<%= d.so_luong_he_thong %>" onchange="updateDiff(this)"></td>
+      <td><input type="number" class="form-control actual" value="<%= d.so_luong_thuc_te != null ? d.so_luong_thuc_te : d.so_luong_he_thong %>" min="0" data-system="<%= d.so_luong_he_thong %>" onchange="updateDiff(this)"></td>
       <td class="diff text-center">-</td>
     </tr><% }) %></tbody></table></div>
     <input type="hidden" name="items" id="itemsData">

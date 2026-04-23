@@ -17,6 +17,62 @@
   </form><% } %>
 </div></div>
 <div class="card mt-2"><div class="card-header"><h2><i class="fas fa-history"></i> Phiếu lĩnh gần đây</h2></div>
-<div class="card-body" style="padding:0"><table><thead><tr><th>Mã PL</th><th>Khoa</th><th>Người lập</th><th>Ngày</th><th>Trạng thái</th></tr></thead>
+<div class="card-body" style="padding:0"><table><thead><tr><th>Mã PL</th><th>Khoa</th><th>Người lập</th><th>Ngày</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
 <tbody><% phieuLinh.forEach(p => { %><tr><td>PL-<%= p.id %></td><td><%= p.khoa %></td><td><%= p.nguoi_lap %></td><td><%= new Date(p.ngay_lap).toLocaleString('vi-VN') %></td>
-<td><span class="badge <%= p.trang_thai==='da_cap_phat'?'badge-success':'badge-warning' %>"><%= p.trang_thai==='da_cap_phat'?'Đã cấp phát':'Chờ duyệt' %></span></td></tr><% }) %></tbody></table></div></div>
+<td><span class="badge <%= p.trang_thai==='da_cap_phat'?'badge-success':'badge-warning' %>"><%= p.trang_thai==='da_cap_phat'?'Đã cấp phát':'Chờ duyệt' %></span></td>
+<td><button class="btn btn-sm btn-info" onclick="viewPhieuLinhDetails(<%= p.id %>)"><i class="fas fa-eye"></i> Xem chi tiết</button></td></tr><% }) %></tbody></table></div></div>
+
+<!-- Modal Chi tiết Phiếu lĩnh -->
+<div id="phieuLinhDetailModal" tabindex="-1" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:999999; align-items:center; justify-content:center;">
+  <div style="width:90%; max-width:800px; background:#fff; border-radius:8px; overflow:hidden; position:relative; box-shadow:0 4px 15px rgba(0,0,0,0.2); margin:0;">
+    <div style="padding:15px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center;">
+      <h5 style="margin:0;">Chi tiết phiếu lĩnh</h5>
+      <button type="button" onclick="closePhieuLinhModal()" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+    </div>
+    <div style="padding:15px; max-height:calc(100vh - 200px); overflow-y:auto;">
+      <div id="phieuLinhInfo" style="margin-bottom:12px; font-size:14px;"></div>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead><tr style="background:#f8f9fa;">
+          <th style="padding:8px; border:1px solid #ddd;">Tên thuốc</th>
+          <th style="padding:8px; border:1px solid #ddd;">Hàm lượng</th>
+          <th style="padding:8px; border:1px solid #ddd;">ĐVT</th>
+          <th style="padding:8px; border:1px solid #ddd; text-align:right">SL yêu cầu</th>
+          <th style="padding:8px; border:1px solid #ddd; text-align:right">SL cấp phát</th>
+        </tr></thead>
+        <tbody id="phieuLinhDetailBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){ const m = document.getElementById('phieuLinhDetailModal'); if (m && m.parentNode !== document.body) document.body.appendChild(m); })();
+async function viewPhieuLinhDetails(id) {
+  try {
+    const res = await fetch('/y-lenh/api/phieu-linh/' + id);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+    const p = result.phieu;
+    const statusLabel = p.trang_thai === 'da_cap_phat' ? 'Đã cấp phát' : (p.trang_thai === 'huy' ? 'Hủy' : 'Chờ duyệt');
+    document.getElementById('phieuLinhInfo').innerHTML =
+      '<strong>Mã:</strong> PL-' + p.id + ' &nbsp; <strong>Khoa:</strong> ' + p.khoa +
+      ' &nbsp; <strong>Người lập:</strong> ' + p.nguoi_lap +
+      '<br><strong>Ngày lập:</strong> ' + new Date(p.ngay_lap).toLocaleString('vi-VN') +
+      ' &nbsp; <strong>Trạng thái:</strong> ' + statusLabel;
+    const tbody = document.getElementById('phieuLinhDetailBody');
+    tbody.innerHTML = '';
+    result.details.forEach(d => {
+      tbody.insertAdjacentHTML('beforeend',
+        '<tr>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + d.ten_thuoc + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + (d.ham_luong || '-') + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + d.don_vi_tinh + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd; text-align:right">' + d.so_luong_yeu_cau + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd; text-align:right">' + (d.so_luong_cap_phat || 0) + '</td>' +
+        '</tr>');
+    });
+    document.getElementById('phieuLinhDetailModal').style.display = 'flex';
+  } catch (err) { alert('Lỗi tải chi tiết: ' + err.message); }
+}
+function closePhieuLinhModal() { document.getElementById('phieuLinhDetailModal').style.display = 'none'; }
+</script>

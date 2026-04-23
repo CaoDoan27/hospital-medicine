@@ -2,10 +2,14 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
+const { parsePage, buildPagination, DEFAULT_PAGE_SIZE } = require('../utils/pagination');
 
 // Danh sách phiếu nhập
 router.get('/', isAuthenticated, authorize('duoc_si_tong'), async (req, res) => {
   try {
+    const page = parsePage(req.query.page);
+    const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM phieu_nhap_kho');
+    const pagination = buildPagination({ page, total, baseUrl: '/nhap-kho' });
     const [receipts] = await db.query(`
       SELECT p.*, ncc.ten_nha_cung_cap, nd.ho_ten as nguoi_lap, k.ten_kho
       FROM phieu_nhap_kho p
@@ -13,8 +17,9 @@ router.get('/', isAuthenticated, authorize('duoc_si_tong'), async (req, res) => 
       JOIN nguoi_dung nd ON p.nguoi_lap_id = nd.id
       JOIN kho k ON p.kho_id = k.id
       ORDER BY p.ngay_lap DESC
-    `);
-    res.render('warehouse-import/index', { title: 'Nhập kho Thuốc', receipts });
+      LIMIT ? OFFSET ?
+    `, [DEFAULT_PAGE_SIZE, pagination.offset]);
+    res.render('warehouse-import/index', { title: 'Nhập kho Thuốc', receipts, pagination });
   } catch (err) { console.error(err); req.flash('error', 'Lỗi tải dữ liệu'); res.redirect('/dashboard'); }
 });
 

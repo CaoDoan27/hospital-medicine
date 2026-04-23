@@ -11,12 +11,22 @@ function updateDateTime() {
 updateDateTime();
 setInterval(updateDateTime, 60000);
 
-// Sidebar toggle
-const sidebarToggle = document.getElementById('sidebarToggle');
-const sidebar = document.getElementById('sidebar');
-if (sidebarToggle && sidebar) {
-  sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-}
+// Sidebar toggle (icon-only collapsed state on desktop, drawer on mobile)
+(function initSidebarToggle() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  const STORAGE_KEY = 'sidebarCollapsed';
+  if (localStorage.getItem(STORAGE_KEY) === '1') document.body.classList.add('sidebar-collapsed');
+
+  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      sidebar.classList.toggle('open');
+      return;
+    }
+    const collapsed = document.body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
+  });
+})();
 
 // Auto-dismiss alerts
 document.querySelectorAll('.alert').forEach(alert => {

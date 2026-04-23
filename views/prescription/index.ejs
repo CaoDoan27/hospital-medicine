@@ -1,0 +1,47 @@
+<div class="toolbar">
+  <div class="search-box">
+    <i class="fas fa-search"></i>
+    <input type="text" placeholder="Tìm theo tên BN hoặc thẻ BHYT..." value="<%= search %>"
+           onkeydown="if(event.key==='Enter') window.location.href='/don-thuoc?search='+encodeURIComponent(this.value)">
+  </div>
+  <a href="/don-thuoc/tao" class="btn btn-primary" data-shortcut="new"><i class="fas fa-plus"></i> Kê đơn mới (F2)</a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-file-prescription"></i> Đơn thuốc đã kê</h2>
+    <span class="badge badge-info"><%= pagination.total %> đơn</span>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div class="table-wrapper"><table>
+      <thead><tr><th>#</th><th>Bệnh nhân</th><th>Thẻ BHYT</th><th>Chẩn đoán</th><th>ICD-10</th><th>Ngày kê</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody>
+      <% if (!prescriptions.length) { %><tr><td colspan="8" class="text-center text-muted" style="padding:30px">Chưa có đơn thuốc nào</td></tr><% } %>
+      <% prescriptions.forEach((p, i) => { %>
+        <tr>
+          <td><%= pagination.offset + i + 1 %></td>
+          <td><strong><%= p.ho_ten %></strong><br><small class="text-muted"><%= p.ma_benh_nhan %></small></td>
+          <td><code><%= p.so_the_bhyt || '-' %></code></td>
+          <td><%= p.chan_doan_lam_sang %></td>
+          <td><span class="badge badge-primary"><%= p.ma_benh %></span></td>
+          <td><%= new Date(p.ngay_ke).toLocaleString('vi-VN') %></td>
+          <td>
+            <% if (p.trang_thai === 'moi') { %><span class="badge badge-warning">Chờ cấp phát</span>
+            <% } else if (p.trang_thai === 'da_cap_phat') { %><span class="badge badge-success">Đã cấp phát</span>
+            <% } else { %><span class="badge badge-danger">Đã hủy</span><% } %>
+          </td>
+          <td>
+            <a href="/don-thuoc/chi-tiet/<%= p.id %>" class="btn btn-sm btn-info"><i class="fas fa-eye"></i> Xem chi tiết</a>
+            <% if (p.trang_thai === 'moi') { %>
+              <form action="/don-thuoc/huy/<%= p.id %>" method="POST" style="display:inline" onsubmit="return confirm('Xác nhận hủy đơn thuốc?')">
+                <button type="submit" class="btn btn-sm btn-danger" title="Hủy"><i class="fas fa-times"></i></button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+    <%- include('../partials/pagination', { pagination }) %>
+  </div>
+</div>

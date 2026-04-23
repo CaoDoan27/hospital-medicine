@@ -3,10 +3,14 @@ const router = express.Router();
 const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
 const FefoService = require('../services/fefoService');
+const { parsePage, buildPagination, DEFAULT_PAGE_SIZE } = require('../utils/pagination');
 
 // Danh sách phiếu điều chuyển
 router.get('/', isAuthenticated, authorize('duoc_si_tong', 'duoc_si_kho_le'), async (req, res) => {
   try {
+    const page = parsePage(req.query.page);
+    const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM phieu_dieu_chuyen');
+    const pagination = buildPagination({ page, total, baseUrl: '/dieu-chuyen' });
     const [transfers] = await db.query(`
       SELECT p.*, kx.ten_kho as kho_xuat, kn.ten_kho as kho_nhan,
         nl.ho_ten as nguoi_lap_ten, nd.ho_ten as nguoi_duyet_ten
@@ -16,8 +20,9 @@ router.get('/', isAuthenticated, authorize('duoc_si_tong', 'duoc_si_kho_le'), as
       JOIN nguoi_dung nl ON p.nguoi_lap_id = nl.id
       LEFT JOIN nguoi_dung nd ON p.nguoi_duyet_id = nd.id
       ORDER BY p.ngay_lap DESC
-    `);
-    res.render('transfer/index', { title: 'Điều chuyển nội bộ', transfers });
+      LIMIT ? OFFSET ?
+    `, [DEFAULT_PAGE_SIZE, pagination.offset]);
+    res.render('transfer/index', { title: 'Điều chuyển nội bộ', transfers, pagination });
   } catch (err) { console.error(err); req.flash('error', 'Lỗi tải dữ liệu'); res.redirect('/dashboard'); }
 });
 

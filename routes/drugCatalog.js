@@ -2,20 +2,31 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
+const { parsePage, buildPagination, DEFAULT_PAGE_SIZE } = require('../utils/pagination');
 
 // Danh sách thuốc
 router.get('/', isAuthenticated, authorize('duoc_si_tong'), async (req, res) => {
   try {
     const search = req.query.search || '';
     const nhom = req.query.nhom || '';
-    let sql = 'SELECT * FROM thuoc WHERE trang_thai = 1';
+    const page = parsePage(req.query.page);
+
+    let whereSql = ' WHERE trang_thai = 1';
     const params = [];
-    if (search) { sql += ' AND (ten_thuoc LIKE ? OR ma_bhyt LIKE ? OR hoat_chat LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
-    if (nhom) { sql += ' AND nhom_thuoc = ?'; params.push(nhom); }
-    sql += ' ORDER BY ten_thuoc ASC';
-    const [drugs] = await db.query(sql, params);
+    if (search) { whereSql += ' AND (ten_thuoc LIKE ? OR ma_bhyt LIKE ? OR hoat_chat LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (nhom) { whereSql += ' AND nhom_thuoc = ?'; params.push(nhom); }
+
+    const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM thuoc' + whereSql, params);
+    const pagination = buildPagination({
+      page, total, baseUrl: '/danh-muc-thuoc',
+      extraParams: { search, nhom }
+    });
+    const [drugs] = await db.query(
+      'SELECT * FROM thuoc' + whereSql + ' ORDER BY ten_thuoc ASC LIMIT ? OFFSET ?',
+      [...params, DEFAULT_PAGE_SIZE, pagination.offset]
+    );
     const [groups] = await db.query('SELECT DISTINCT nhom_thuoc FROM thuoc WHERE trang_thai = 1 AND nhom_thuoc IS NOT NULL ORDER BY nhom_thuoc');
-    res.render('drug-catalog/index', { title: 'Danh mục Thuốc', drugs, groups, search, nhom });
+    res.render('drug-catalog/index', { title: 'Danh mục Thuốc', drugs, groups, search, nhom, pagination });
   } catch (err) {
     console.error(err);
     req.flash('error', 'Lỗi tải danh mục thuốc');

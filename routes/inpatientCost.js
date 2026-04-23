@@ -3,15 +3,20 @@ const router = express.Router();
 const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
 const BhytService = require('../services/bhytService');
+const { parsePage, buildPagination, DEFAULT_PAGE_SIZE } = require('../utils/pagination');
 
 router.get('/', isAuthenticated, authorize('ke_toan'), async (req, res) => {
   try {
+    const page = parsePage(req.query.page);
+    const [[{ total }]] = await db.query("SELECT COUNT(*) AS total FROM dot_dieu_tri WHERE loai_hinh = 'noi_tru'");
+    const pagination = buildPagination({ page, total, baseUrl: '/chi-phi-noi-tru' });
     const [patients] = await db.query(`
       SELECT bn.*, d.id as dot_id, d.khoa, d.ngay_vao, d.ma_benh, d.chan_doan_lam_sang, d.trang_thai as trang_thai_dt
       FROM dot_dieu_tri d JOIN benh_nhan bn ON d.benh_nhan_id = bn.id
       WHERE d.loai_hinh = 'noi_tru' ORDER BY d.ngay_vao DESC
-    `);
-    res.render('cost/inpatient-cost', { title: 'Tổng hợp CP Nội trú', patients });
+      LIMIT ? OFFSET ?
+    `, [DEFAULT_PAGE_SIZE, pagination.offset]);
+    res.render('cost/inpatient-cost', { title: 'Tổng hợp CP Nội trú', patients, pagination });
   } catch (err) { console.error(err); req.flash('error', 'Lỗi'); res.redirect('/dashboard'); }
 });
 

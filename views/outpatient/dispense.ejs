@@ -14,6 +14,14 @@
   </div>
 </div></div>
 
+<% if (prescribedItems && prescribedItems.length) { %>
+<div class="card mb-2"><div class="card-header"><h2><i class="fas fa-file-prescription"></i> Bác sĩ đã kê (<%= rx.bac_si_ke || '—' %>)</h2></div>
+<div class="card-body" style="padding:0"><table><thead><tr><th>Tên thuốc</th><th>Hàm lượng</th><th>ĐVT</th><th>Số lượng</th><th>Liều dùng</th></tr></thead>
+<tbody><% prescribedItems.forEach(it => { %>
+<tr><td><strong><%= it.ten_thuoc %></strong></td><td><%= it.ham_luong || '-' %></td><td><%= it.don_vi_tinh %></td><td><%= it.so_luong %></td><td><%= it.lieu_dung || '-' %></td></tr>
+<% }) %></tbody></table></div></div>
+<% } %>
+
 <div class="card"><div class="card-header"><h2><i class="fas fa-pills"></i> Cấp phát thuốc</h2><a href="/cap-phat-ngoai-tru" class="btn btn-outline btn-sm">Quay lại</a></div>
 <div class="card-body">
   <form action="/cap-phat-ngoai-tru/cap-phat" method="POST">
@@ -37,5 +45,17 @@ tr.querySelector('.ton').textContent=opt.dataset.ton||'-';tr.querySelector('.gia
 const bhyt=Math.round(sl*gia*tltt*mh);const bncct=Math.round(sl*gia*tltt)-bhyt;const bntt=Math.max(0,Math.round(sl*gia)-bhyt-bncct);
 tr.querySelector('.bhyt').textContent=new Intl.NumberFormat('vi-VN').format(bhyt);tr.querySelector('.bncct').textContent=new Intl.NumberFormat('vi-VN').format(bncct);tr.querySelector('.bntt').textContent=new Intl.NumberFormat('vi-VN').format(bntt);}
 function prepareSubmit(){const rows=document.querySelectorAll('#dispItems tr');const items=[];rows.forEach(r=>{const id=r.querySelector('.drug-sel').value;if(id)items.push({thuoc_id:id,so_luong:r.querySelector('.sl').value});});document.getElementById('itemsInput').value=JSON.stringify(items);}
-addDispItem();
+
+const prescribedItems = <%- JSON.stringify(prescribedItems || []) %>;
+if (prescribedItems.length) {
+  prescribedItems.forEach(item => {
+    addDispItem();
+    const row = document.querySelector('#dispItems tr:last-child');
+    row.querySelector('.drug-sel').value = item.thuoc_id;
+    row.querySelector('.sl').value = item.so_luong;
+    calcCost(row);
+  });
+} else {
+  addDispItem();
+}
 </script>

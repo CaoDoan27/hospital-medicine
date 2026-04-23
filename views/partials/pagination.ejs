@@ -1,0 +1,19 @@
+<% if (typeof pagination !== 'undefined' && pagination && pagination.totalPages > 1) { %>
+<div class="pagination">
+  <% if (pagination.prevUrl) { %><a href="<%= pagination.prevUrl %>" title="Trang trước">&laquo;</a><% } else { %><span style="opacity:0.4">&laquo;</span><% } %>
+  <% if (pagination.pages.length && pagination.pages[0].number > 1) { %>
+    <a href="<%= pagination.pages[0].url.replace(/page=\d+/, 'page=1') %>">1</a>
+    <% if (pagination.pages[0].number > 2) { %><span style="border:none">…</span><% } %>
+  <% } %>
+  <% pagination.pages.forEach(p => { %>
+    <% if (p.active) { %><span class="active"><%= p.number %></span><% } else { %><a href="<%= p.url %>"><%= p.number %></a><% } %>
+  <% }); %>
+  <% const last = pagination.pages[pagination.pages.length - 1]; %>
+  <% if (last && last.number < pagination.totalPages) { %>
+    <% if (last.number < pagination.totalPages - 1) { %><span style="border:none">…</span><% } %>
+    <a href="<%= last.url.replace(/page=\d+/, 'page=' + pagination.totalPages) %>"><%= pagination.totalPages %></a>
+  <% } %>
+  <% if (pagination.nextUrl) { %><a href="<%= pagination.nextUrl %>" title="Trang sau">&raquo;</a><% } else { %><span style="opacity:0.4">&raquo;</span><% } %>
+  <span style="border:none; margin-left:12px; color:var(--text-muted); font-size:0.8rem;">Trang <%= pagination.page %>/<%= pagination.totalPages %> · <%= pagination.total %> bản ghi</span>
+</div>
+<% } %>

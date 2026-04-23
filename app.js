@@ -56,6 +56,7 @@ app.use('/nhap-kho', require('./routes/warehouseImport'));
 app.use('/dieu-chuyen', require('./routes/transfer'));
 app.use('/kiem-ke', require('./routes/inventory'));
 app.use('/cap-phat-ngoai-tru', require('./routes/outpatient'));
+app.use('/don-thuoc', require('./routes/prescription'));
 app.use('/y-lenh', require('./routes/medicalOrder'));
 app.use('/tu-truc', require('./routes/emergencyCabinet'));
 app.use('/cap-phat-noi-tru', require('./routes/inpatientDispense'));

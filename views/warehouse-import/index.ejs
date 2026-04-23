@@ -9,24 +9,25 @@
       <tbody>
       <% if (receipts.length === 0) { %><tr><td colspan="8" class="text-center text-muted" style="padding:30px">Chưa có phiếu nhập kho</td></tr><% } %>
       <% receipts.forEach((r, i) => { %>
-        <tr><td><%= i+1 %></td><td><strong><%= r.so_hoa_don %></strong></td><td><%= r.ten_nha_cung_cap %></td><td><%= r.ten_kho %></td>
+        <tr><td><%= pagination.offset + i + 1 %></td><td><strong><%= r.so_hoa_don %></strong></td><td><%= r.ten_nha_cung_cap %></td><td><%= r.ten_kho %></td>
         <td><%= new Date(r.ngay_lap).toLocaleDateString('vi-VN') %></td>
         <td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(r.tong_tien) %>đ</td><td><%= r.nguoi_lap %></td>
-        <td><button class="btn btn-sm btn-info" onclick="viewDetails(<%= r.id %>)"><i class="fas fa-eye"></i> Chi tiết</button></td></tr>
+        <td><button class="btn btn-sm btn-info" onclick="viewDetails(<%= r.id %>)"><i class="fas fa-eye"></i> Xem chi tiết</button></td></tr>
       <% }) %>
       </tbody>
     </table></div>
+    <%- include('../partials/pagination', { pagination }) %>
   </div>
 </div>
 
 <!-- Modal Chi tiết -->
-<div id="receiptDetailModal" class="modal" tabindex="-1" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999999; align-items: center; justify-content: center;">
-  <div class="modal-dialog" style="width: 100%; max-width: 800px; background: #fff; border-radius: 8px; overflow: hidden; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin: 0;">
-    <div class="modal-header" style="padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
-      <h5 class="modal-title" style="margin:0;">Chi tiết phiếu nhập</h5>
-      <button type="button" class="close" onclick="closeModal()" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+<div id="receiptDetailModal" tabindex="-1" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:999999; align-items:center; justify-content:center;">
+  <div style="width:90%; max-width:800px; background:#fff; border-radius:8px; overflow:hidden; position:relative; box-shadow:0 4px 15px rgba(0,0,0,0.2); margin:0;">
+    <div style="padding:15px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center;">
+      <h5 style="margin:0;">Chi tiết phiếu nhập</h5>
+      <button type="button" onclick="closeModal()" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
     </div>
-    <div class="modal-body" style="padding: 15px; max-height: calc(100vh - 200px); overflow-y: auto;">
+    <div style="padding:15px; max-height:calc(100vh - 200px); overflow-y:auto;">
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
         <thead>
           <tr style="background: #f8f9fa;">

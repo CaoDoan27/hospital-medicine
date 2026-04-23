@@ -10,7 +10,8 @@ INSERT INTO nguoi_dung (ten_dang_nhap, mat_khau, ho_ten, vai_tro) VALUES
 ('ds.tong', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'DS. Nguyễn Văn An', 'duoc_si_tong'),
 ('ds.khole', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'DS. Trần Thị Bình', 'duoc_si_kho_le'),
 ('dd.noi', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'ĐD. Lê Thị Cúc', 'dieu_duong'),
-('kt.vien', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'KT. Phạm Văn Dũng', 'ke_toan');
+('kt.vien', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'KT. Phạm Văn Dũng', 'ke_toan'),
+('bs.nam',  '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'BS. Trần Văn Nam', 'bac_si');
 
 -- =====================================================
 -- KHO

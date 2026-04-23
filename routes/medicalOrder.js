@@ -57,4 +57,23 @@ router.post('/tong-hop', isAuthenticated, authorize('dieu_duong'), async (req, r
   finally { conn.release(); }
 });
 
+// API: Chi tiết phiếu lĩnh
+router.get('/api/phieu-linh/:id', isAuthenticated, async (req, res) => {
+  try {
+    const [phieu] = await db.query(`
+      SELECT pl.*, nd.ho_ten as nguoi_lap FROM phieu_linh pl
+      JOIN nguoi_dung nd ON pl.nguoi_lap_id = nd.id WHERE pl.id = ?
+    `, [req.params.id]);
+    if (!phieu.length) return res.status(404).json({ success: false, error: 'Không tìm thấy phiếu lĩnh' });
+    const [details] = await db.query(`
+      SELECT ct.*, t.ten_thuoc, t.ham_luong, t.don_vi_tinh FROM chi_tiet_phieu_linh ct
+      JOIN thuoc t ON ct.thuoc_id = t.id WHERE ct.phieu_linh_id = ? ORDER BY t.ten_thuoc
+    `, [req.params.id]);
+    res.json({ success: true, phieu: phieu[0], details });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Lỗi lấy chi tiết phiếu lĩnh' });
+  }
+});
+
 module.exports = router;

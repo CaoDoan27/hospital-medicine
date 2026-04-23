@@ -18,7 +18,7 @@
 <div class="card">
   <div class="card-header">
     <h2><i class="fas fa-pills"></i> Danh mục Thuốc</h2>
-    <span class="badge badge-info"><%= drugs.length %> thuốc</span>
+    <span class="badge badge-info"><%= pagination.total %> thuốc</span>
   </div>
   <div class="card-body" style="padding:0">
     <div class="table-wrapper">
@@ -43,7 +43,7 @@
           <% } %>
           <% drugs.forEach((d, i) => { %>
           <tr>
-            <td><%= i + 1 %></td>
+            <td><%= pagination.offset + i + 1 %></td>
             <td><code style="font-size:0.8rem"><%= d.ma_bhyt %></code></td>
             <td><strong><%= d.ten_thuoc %></strong><% if (d.ham_luong) { %><br><small class="text-muted"><%= d.ham_luong %></small><% } %></td>
             <td><small><%= d.hoat_chat || '' %></small></td>
@@ -65,5 +65,6 @@
         </tbody>
       </table>
     </div>
+    <%- include('../partials/pagination', { pagination }) %>
   </div>
 </div>

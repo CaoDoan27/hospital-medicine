@@ -4,19 +4,38 @@ const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
 const BhytService = require('../services/bhytService');
 const FefoService = require('../services/fefoService');
+const { parsePage, buildPagination, DEFAULT_PAGE_SIZE } = require('../utils/pagination');
 
 // Trang cấp phát ngoại trú
 router.get('/', isAuthenticated, authorize('duoc_si_kho_le'), async (req, res) => {
   try {
+    const page = parsePage(req.query.page);
+    const search = (req.query.search || '').trim();
+
+    let where = "WHERE d.loai_hinh = 'ngoai_tru' AND dt.trang_thai = 'moi'";
+    const params = [];
+    if (search) {
+      where += ' AND (bn.ho_ten LIKE ? OR bn.so_the_bhyt LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    const [[{ total }]] = await db.query(`
+      SELECT COUNT(*) AS total FROM don_thuoc dt
+      JOIN dot_dieu_tri d ON dt.dot_dieu_tri_id = d.id
+      JOIN benh_nhan bn ON d.benh_nhan_id = bn.id
+      ${where}
+    `, params);
+    const pagination = buildPagination({ page, total, baseUrl: '/cap-phat-ngoai-tru', extraParams: { search } });
     const [prescriptions] = await db.query(`
       SELECT dt.*, bn.ho_ten, bn.so_the_bhyt, bn.ngay_sinh, d.chan_doan_lam_sang, d.ma_benh, d.muc_huong
       FROM don_thuoc dt
       JOIN dot_dieu_tri d ON dt.dot_dieu_tri_id = d.id
       JOIN benh_nhan bn ON d.benh_nhan_id = bn.id
-      WHERE d.loai_hinh = 'ngoai_tru' AND dt.trang_thai = 'moi'
+      ${where}
       ORDER BY dt.ngay_ke DESC
-    `);
-    res.render('outpatient/index', { title: 'Cấp phát Ngoại trú', prescriptions });
+      LIMIT ? OFFSET ?
+    `, [...params, DEFAULT_PAGE_SIZE, pagination.offset]);
+    res.render('outpatient/index', { title: 'Cấp phát Ngoại trú', prescriptions, pagination, search });
   } catch (err) { console.error(err); req.flash('error', 'Lỗi'); res.redirect('/dashboard'); }
 });
 
@@ -24,7 +43,9 @@ router.get('/', isAuthenticated, authorize('duoc_si_kho_le'), async (req, res) =
 router.get('/don/:id', isAuthenticated, authorize('duoc_si_kho_le'), async (req, res) => {
   try {
     const [prescription] = await db.query(`
-      SELECT dt.*, bn.*, d.ma_benh, d.chan_doan_lam_sang, d.muc_huong, d.id as dot_dieu_tri_id
+      SELECT dt.id, dt.bac_si_ke, dt.ngay_ke, dt.trang_thai, dt.chan_doan,
+             bn.ma_benh_nhan, bn.ho_ten, bn.ngay_sinh, bn.gioi_tinh, bn.so_the_bhyt, bn.dia_chi, bn.dien_thoai,
+             d.id as dot_dieu_tri_id, d.ma_benh, d.chan_doan_lam_sang, d.muc_huong
       FROM don_thuoc dt
       JOIN dot_dieu_tri d ON dt.dot_dieu_tri_id = d.id
       JOIN benh_nhan bn ON d.benh_nhan_id = bn.id
@@ -44,8 +65,15 @@ router.get('/don/:id', isAuthenticated, authorize('duoc_si_kho_le'), async (req,
       WHERE t.trang_thai = 1 GROUP BY t.id ORDER BY t.ten_thuoc
     `);
 
+    // Thuốc bác sĩ đã kê (để điền sẵn form cấp phát)
+    const [prescribedItems] = await db.query(`
+      SELECT ct.thuoc_id, ct.so_luong, ct.lieu_dung, t.ten_thuoc, t.ham_luong, t.don_vi_tinh
+      FROM chi_tiet_don_thuoc ct JOIN thuoc t ON ct.thuoc_id = t.id
+      WHERE ct.don_thuoc_id = ? ORDER BY t.ten_thuoc
+    `, [req.params.id]);
+
     res.render('outpatient/dispense', {
-      title: 'Cấp phát đơn thuốc', rx, insuranceData, mucHuong, drugs
+      title: 'Cấp phát đơn thuốc', rx, insuranceData, mucHuong, drugs, prescribedItems
     });
   } catch (err) { console.error(err); req.flash('error', 'Lỗi'); res.redirect('/cap-phat-ngoai-tru'); }
 });

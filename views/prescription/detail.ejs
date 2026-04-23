@@ -1,0 +1,46 @@
+<div class="card mb-2">
+  <div class="card-header">
+    <h2><i class="fas fa-file-prescription"></i> Đơn thuốc #<%= rx.id %></h2>
+    <a href="/don-thuoc" class="btn btn-outline btn-sm">Quay lại</a>
+  </div>
+  <div class="card-body">
+    <div class="form-row">
+      <div class="form-group"><label>Bệnh nhân</label><input class="form-control" value="<%= rx.ho_ten %> (<%= rx.ma_benh_nhan %>)" disabled></div>
+      <div class="form-group"><label>Thẻ BHYT</label><input class="form-control" value="<%= rx.so_the_bhyt || 'Không có' %>" disabled></div>
+      <div class="form-group"><label>Ngày kê</label><input class="form-control" value="<%= new Date(rx.ngay_ke).toLocaleString('vi-VN') %>" disabled></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Mã bệnh (ICD-10)</label><input class="form-control" value="<%= rx.ma_benh %>" disabled></div>
+      <div class="form-group"><label>Chẩn đoán lâm sàng</label><input class="form-control" value="<%= rx.chan_doan_lam_sang %>" disabled></div>
+      <div class="form-group"><label>Mức hưởng</label><input class="form-control" value="<%= rx.muc_huong %>%" disabled></div>
+    </div>
+    <div class="form-group"><label>Trạng thái</label>
+      <% if (rx.trang_thai === 'moi') { %><span class="badge badge-warning" style="font-size:0.9rem;padding:6px 14px">Chờ cấp phát</span>
+      <% } else if (rx.trang_thai === 'da_cap_phat') { %><span class="badge badge-success" style="font-size:0.9rem;padding:6px 14px">Đã cấp phát</span>
+      <% } else { %><span class="badge badge-danger" style="font-size:0.9rem;padding:6px 14px">Đã hủy</span><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2><i class="fas fa-pills"></i> Danh sách thuốc kê</h2></div>
+  <div class="card-body" style="padding:0">
+    <table>
+      <thead><tr><th>#</th><th>Tên thuốc</th><th>Hàm lượng</th><th>ĐVT</th><th>Số lượng</th><th>Liều dùng</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <% if (!items.length) { %><tr><td colspan="7" class="text-center text-muted" style="padding:20px">Không có thuốc</td></tr><% } %>
+        <% items.forEach((it, i) => { %>
+        <tr>
+          <td><%= i + 1 %></td>
+          <td><strong><%= it.ten_thuoc %></strong></td>
+          <td><%= it.ham_luong || '-' %></td>
+          <td><%= it.don_vi_tinh %></td>
+          <td><%= it.so_luong %></td>
+          <td><%= it.lieu_dung || '-' %></td>
+          <td><%= it.ghi_chu || '-' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>

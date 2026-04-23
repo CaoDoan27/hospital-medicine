@@ -12,6 +12,63 @@
   </form><% } %>
 </div></div>
 <div class="card mt-2"><div class="card-header"><h2><i class="fas fa-history"></i> Yêu cầu gần đây</h2></div>
-<div class="card-body" style="padding:0"><table><thead><tr><th>Mã</th><th>Người lập</th><th>Ngày</th><th>Trạng thái</th></tr></thead>
+<div class="card-body" style="padding:0"><table><thead><tr><th>Mã</th><th>Người lập</th><th>Ngày</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
 <tbody><% existingRequests.forEach(r => { %><tr><td>HU-<%= r.id %></td><td><%= r.nguoi_lap %></td><td><%= new Date(r.ngay_lap).toLocaleString('vi-VN') %></td>
-<td><span class="badge <%= r.trang_thai==='da_hoan_thanh'?'badge-success':r.trang_thai==='tu_choi'?'badge-danger':'badge-warning' %>"><%= r.trang_thai==='cho_duyet'?'Chờ duyệt':r.trang_thai==='da_hoan_thanh'?'Hoàn thành':'Từ chối' %></span></td></tr><% }) %></tbody></table></div></div>
+<td><span class="badge <%= r.trang_thai==='da_hoan_thanh'?'badge-success':r.trang_thai==='tu_choi'?'badge-danger':'badge-warning' %>"><%= r.trang_thai==='cho_duyet'?'Chờ duyệt':r.trang_thai==='da_hoan_thanh'?'Hoàn thành':'Từ chối' %></span></td>
+<td><button class="btn btn-sm btn-info" onclick="viewHoanUngDetails(<%= r.id %>)"><i class="fas fa-eye"></i> Xem chi tiết</button></td></tr><% }) %></tbody></table></div></div>
+
+<!-- Modal Chi tiết Hoàn ứng -->
+<div id="hoanUngDetailModal" tabindex="-1" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:999999; align-items:center; justify-content:center;">
+  <div style="width:90%; max-width:800px; background:#fff; border-radius:8px; overflow:hidden; position:relative; box-shadow:0 4px 15px rgba(0,0,0,0.2); margin:0;">
+    <div style="padding:15px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center;">
+      <h5 style="margin:0;">Chi tiết phiếu hoàn ứng</h5>
+      <button type="button" onclick="closeHoanUngModal()" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+    </div>
+    <div style="padding:15px; max-height:calc(100vh - 200px); overflow-y:auto;">
+      <div id="hoanUngInfo" style="margin-bottom:12px; font-size:14px;"></div>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead><tr style="background:#f8f9fa;">
+          <th style="padding:8px; border:1px solid #ddd;">Tên thuốc</th>
+          <th style="padding:8px; border:1px solid #ddd;">ĐVT</th>
+          <th style="padding:8px; border:1px solid #ddd; text-align:right">SL yêu cầu</th>
+          <th style="padding:8px; border:1px solid #ddd; text-align:right">SL thực xuất</th>
+        </tr></thead>
+        <tbody id="hoanUngDetailBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){ const m = document.getElementById('hoanUngDetailModal'); if (m && m.parentNode !== document.body) document.body.appendChild(m); })();
+async function viewHoanUngDetails(id) {
+  try {
+    const res = await fetch('/hoan-ung/api/chi-tiet/' + id);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+    const p = result.phieu;
+    const statusLabel = p.trang_thai === 'da_hoan_thanh' ? 'Hoàn thành' : (p.trang_thai === 'tu_choi' ? 'Từ chối' : 'Chờ duyệt');
+    document.getElementById('hoanUngInfo').innerHTML =
+      '<strong>Mã:</strong> HU-' + p.id + ' &nbsp; <strong>Tủ trực:</strong> ' + p.ten_kho +
+      ' &nbsp; <strong>Khoa yêu cầu:</strong> ' + p.khoa_yeu_cau +
+      '<br><strong>Người lập:</strong> ' + p.nguoi_lap +
+      ' &nbsp; <strong>Ngày lập:</strong> ' + new Date(p.ngay_lap).toLocaleString('vi-VN') +
+      '<br><strong>Trạng thái:</strong> ' + statusLabel +
+      (p.nguoi_duyet ? ' &nbsp; <strong>Người duyệt:</strong> ' + p.nguoi_duyet : '') +
+      (p.ngay_duyet ? ' &nbsp; <strong>Ngày duyệt:</strong> ' + new Date(p.ngay_duyet).toLocaleString('vi-VN') : '');
+    const tbody = document.getElementById('hoanUngDetailBody');
+    tbody.innerHTML = '';
+    result.details.forEach(d => {
+      tbody.insertAdjacentHTML('beforeend',
+        '<tr>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + d.ten_thuoc + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + d.don_vi_tinh + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd; text-align:right">' + d.so_luong_yeu_cau + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd; text-align:right">' + (d.so_luong_thuc_xuat || 0) + '</td>' +
+        '</tr>');
+    });
+    document.getElementById('hoanUngDetailModal').style.display = 'flex';
+  } catch (err) { alert('Lỗi tải chi tiết: ' + err.message); }
+}
+function closeHoanUngModal() { document.getElementById('hoanUngDetailModal').style.display = 'none'; }
+</script>

@@ -95,4 +95,27 @@ router.post('/duyet/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'),
   res.redirect('/hoan-ung/duyet');
 });
 
+// API: Chi tiết phiếu hoàn ứng
+router.get('/api/chi-tiet/:id', isAuthenticated, async (req, res) => {
+  try {
+    const [phieu] = await db.query(`
+      SELECT phu.*, k.ten_kho, nl.ho_ten as nguoi_lap, nd.ho_ten as nguoi_duyet
+      FROM phieu_hoan_ung phu
+      JOIN kho k ON phu.kho_tu_truc_id = k.id
+      JOIN nguoi_dung nl ON phu.nguoi_lap_id = nl.id
+      LEFT JOIN nguoi_dung nd ON phu.nguoi_duyet_id = nd.id
+      WHERE phu.id = ?
+    `, [req.params.id]);
+    if (!phieu.length) return res.status(404).json({ success: false, error: 'Không tìm thấy phiếu hoàn ứng' });
+    const [details] = await db.query(`
+      SELECT ct.*, t.ten_thuoc, t.don_vi_tinh FROM chi_tiet_phieu_hoan_ung ct
+      JOIN thuoc t ON ct.thuoc_id = t.id WHERE ct.phieu_hoan_ung_id = ? ORDER BY t.ten_thuoc
+    `, [req.params.id]);
+    res.json({ success: true, phieu: phieu[0], details });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Lỗi lấy chi tiết phiếu hoàn ứng' });
+  }
+});
+
 module.exports = router;

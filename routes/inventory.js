@@ -67,6 +67,26 @@ router.get('/thuc-hien/:id', isAuthenticated, async (req, res) => {
   } catch (err) { console.error(err); req.flash('error', 'Lỗi'); res.redirect('/kiem-ke'); }
 });
 
+// API: Chi tiết phiên kiểm kê
+router.get('/api/chi-tiet/:id', isAuthenticated, async (req, res) => {
+  try {
+    const [sessions] = await db.query(`
+      SELECT kk.*, k.ten_kho, nd.ho_ten FROM kiem_ke kk
+      JOIN kho k ON kk.kho_id = k.id JOIN nguoi_dung nd ON kk.nguoi_kiem_ke_id = nd.id
+      WHERE kk.id = ?
+    `, [req.params.id]);
+    if (!sessions.length) return res.status(404).json({ success: false, error: 'Không tìm thấy phiên kiểm kê' });
+    const [details] = await db.query(`
+      SELECT ck.*, t.ten_thuoc, t.don_vi_tinh FROM chi_tiet_kiem_ke ck
+      JOIN thuoc t ON ck.thuoc_id = t.id WHERE ck.kiem_ke_id = ? ORDER BY t.ten_thuoc
+    `, [req.params.id]);
+    res.json({ success: true, session: sessions[0], details });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Lỗi lấy chi tiết kiểm kê' });
+  }
+});
+
 // Hoàn tất kiểm kê
 router.post('/hoan-tat/:id', isAuthenticated, async (req, res) => {
   const conn = await db.getConnection();

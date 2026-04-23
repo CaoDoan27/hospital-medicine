@@ -1,0 +1,156 @@
+<form action="/don-thuoc/luu" method="POST" id="prescriptionForm">
+  <input type="hidden" name="benh_nhan_id" id="benh_nhan_id" value="">
+
+  <div class="card mb-2">
+    <div class="card-header"><h2><i class="fas fa-user"></i> Bệnh nhân</h2></div>
+    <div class="card-body">
+      <div class="form-group" style="position:relative">
+        <label>Tìm bệnh nhân có sẵn (tên / mã BN / thẻ BHYT)</label>
+        <input type="text" id="bnSearch" class="form-control" placeholder="Gõ ≥ 2 ký tự để tìm, hoặc bỏ trống để tạo mới" autocomplete="off">
+        <div id="bnResults" style="position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid var(--border); border-top:none; max-height:240px; overflow-y:auto; z-index:20; display:none;"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Mã BN <small class="text-muted">(tự sinh nếu bỏ trống)</small></label>
+          <input type="text" name="ma_benh_nhan" id="ma_benh_nhan" class="form-control"></div>
+        <div class="form-group"><label>Họ tên <span class="text-danger">*</span></label>
+          <input type="text" name="ho_ten" id="ho_ten" class="form-control" required></div>
+        <div class="form-group"><label>Ngày sinh</label>
+          <input type="date" name="ngay_sinh" id="ngay_sinh" class="form-control"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Giới tính</label>
+          <select name="gioi_tinh" id="gioi_tinh" class="form-control"><option value="Nam">Nam</option><option value="Nu">Nữ</option></select></div>
+        <div class="form-group"><label>Thẻ BHYT</label>
+          <input type="text" name="so_the_bhyt" id="so_the_bhyt" class="form-control" maxlength="15"></div>
+        <div class="form-group"><label>Điện thoại</label>
+          <input type="text" name="dien_thoai" id="dien_thoai" class="form-control"></div>
+      </div>
+      <div class="form-group"><label>Địa chỉ</label>
+        <input type="text" name="dia_chi" id="dia_chi" class="form-control"></div>
+    </div>
+  </div>
+
+  <div class="card mb-2">
+    <div class="card-header"><h2><i class="fas fa-stethoscope"></i> Chẩn đoán</h2></div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group"><label>Mã bệnh ICD-10 <span class="text-danger">*</span></label>
+          <select name="ma_benh" class="form-control" required>
+            <option value="">-- Chọn --</option>
+            <% icd10.forEach(c => { %><option value="<%= c.ma_benh %>"><%= c.ma_benh %> - <%= c.ten_benh %></option><% }) %>
+          </select></div>
+        <div class="form-group"><label>Mức hưởng BHYT</label>
+          <select name="muc_huong" class="form-control">
+            <option value="80" selected>80%</option>
+            <option value="95">95%</option>
+            <option value="100">100%</option>
+          </select></div>
+      </div>
+      <div class="form-group"><label>Chẩn đoán lâm sàng <span class="text-danger">*</span></label>
+        <input type="text" name="chan_doan_lam_sang" class="form-control" required></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2><i class="fas fa-pills"></i> Thuốc kê</h2>
+      <a href="/don-thuoc" class="btn btn-outline btn-sm">Quay lại</a>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th style="width:32%">Thuốc</th><th style="width:12%">Số lượng</th><th style="width:22%">Liều dùng</th><th>Ghi chú</th><th></th></tr></thead>
+        <tbody id="rxItems"></tbody>
+      </table>
+      <button type="button" class="btn btn-outline btn-sm mt-1" onclick="addRxItem()"><i class="fas fa-plus"></i> Thêm thuốc</button>
+      <input type="hidden" name="items" id="itemsInput">
+      <div class="btn-group mt-2">
+        <button type="submit" class="btn btn-success btn-lg" data-shortcut="save"><i class="fas fa-check-circle"></i> Lưu đơn thuốc</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<script>
+const drugs = <%- JSON.stringify(drugs) %>;
+
+function addRxItem() {
+  const tbody = document.getElementById('rxItems');
+  const tr = document.createElement('tr');
+  let opts = '<option value="">-- Chọn thuốc --</option>';
+  drugs.forEach(d => {
+    const label = `${d.ten_thuoc}${d.ham_luong ? ' ('+d.ham_luong+')' : ''} [${d.don_vi_tinh}]`;
+    opts += `<option value="${d.id}">${label}</option>`;
+  });
+  tr.innerHTML = `
+    <td><select class="form-control drug-sel">${opts}</select></td>
+    <td><input type="number" class="form-control sl" min="1" value="1"></td>
+    <td><input type="text" class="form-control lieu" placeholder="VD: 1 viên x 2 lần/ngày"></td>
+    <td><input type="text" class="form-control ghi"></td>
+    <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()">×</button></td>`;
+  tbody.appendChild(tr);
+}
+
+document.getElementById('prescriptionForm').addEventListener('submit', (e) => {
+  const rows = document.querySelectorAll('#rxItems tr');
+  const items = [];
+  rows.forEach(r => {
+    const id = r.querySelector('.drug-sel').value;
+    const sl = r.querySelector('.sl').value;
+    if (id && sl) items.push({
+      thuoc_id: id, so_luong: sl,
+      lieu_dung: r.querySelector('.lieu').value,
+      ghi_chu: r.querySelector('.ghi').value
+    });
+  });
+  if (!items.length) { e.preventDefault(); alert('Vui lòng thêm ít nhất 1 thuốc'); return; }
+  document.getElementById('itemsInput').value = JSON.stringify(items);
+});
+
+// Patient search
+const bnSearch = document.getElementById('bnSearch');
+const bnResults = document.getElementById('bnResults');
+let searchTimer;
+bnSearch.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  const q = bnSearch.value.trim();
+  if (q.length < 2) { bnResults.style.display = 'none'; return; }
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await fetch('/don-thuoc/api/benh-nhan?q=' + encodeURIComponent(q));
+      const json = await res.json();
+      if (!json.success || !json.data.length) { bnResults.innerHTML = '<div style="padding:10px;color:var(--text-muted);font-size:0.85rem">Không tìm thấy. Nhập thông tin để tạo bệnh nhân mới.</div>'; bnResults.style.display='block'; return; }
+      bnResults.innerHTML = json.data.map(b => `
+        <div class="bn-row" data-bn='${JSON.stringify(b).replace(/'/g, "&#39;")}' style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border-light);">
+          <strong>${b.ho_ten}</strong> <small class="text-muted">${b.ma_benh_nhan}</small>
+          ${b.so_the_bhyt ? '<br><small>BHYT: '+b.so_the_bhyt+'</small>' : ''}
+        </div>`).join('');
+      bnResults.style.display = 'block';
+      bnResults.querySelectorAll('.bn-row').forEach(row => {
+        row.addEventListener('mouseenter', () => row.style.background = 'var(--primary-bg)');
+        row.addEventListener('mouseleave', () => row.style.background = '');
+        row.addEventListener('click', () => {
+          const b = JSON.parse(row.dataset.bn.replace(/&#39;/g, "'"));
+          document.getElementById('benh_nhan_id').value = b.id;
+          document.getElementById('ma_benh_nhan').value = b.ma_benh_nhan;
+          document.getElementById('ho_ten').value = b.ho_ten;
+          document.getElementById('ngay_sinh').value = b.ngay_sinh ? b.ngay_sinh.split('T')[0] : '';
+          document.getElementById('gioi_tinh').value = b.gioi_tinh || 'Nam';
+          document.getElementById('so_the_bhyt').value = b.so_the_bhyt || '';
+          document.getElementById('dia_chi').value = b.dia_chi || '';
+          document.getElementById('dien_thoai').value = b.dien_thoai || '';
+          bnSearch.value = b.ho_ten;
+          bnResults.style.display = 'none';
+        });
+      });
+    } catch (err) { console.error(err); }
+  }, 250);
+});
+document.addEventListener('click', (e) => {
+  if (!bnResults.contains(e.target) && e.target !== bnSearch) bnResults.style.display = 'none';
+});
+// Clearing the search clears the linked patient
+bnSearch.addEventListener('change', () => {
+  if (!bnSearch.value.trim()) document.getElementById('benh_nhan_id').value = '';
+});
+
+addRxItem();
+</script>

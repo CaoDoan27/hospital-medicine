@@ -23,5 +23,63 @@
   <% sessions.forEach(s => { %><tr><td><%= s.ten_kho %></td><td><%= s.ho_ten %></td><td><%= new Date(s.ngay_bat_dau).toLocaleString('vi-VN') %></td>
     <td><%= s.ngay_ket_thuc ? new Date(s.ngay_ket_thuc).toLocaleString('vi-VN') : '-' %></td>
     <td><span class="badge <%= s.trang_thai === 'hoan_thanh' ? 'badge-success' : 'badge-warning' %>"><%= s.trang_thai === 'hoan_thanh' ? 'Hoàn thành' : 'Đang thực hiện' %></span></td>
-    <td><% if (s.trang_thai === 'dang_thuc_hien') { %><a href="/kiem-ke/thuc-hien/<%= s.id %>" class="btn btn-sm btn-primary">Tiếp tục</a><% } %></td></tr><% }) %>
+    <td><button class="btn btn-sm btn-info" onclick="viewKiemKeDetails(<%= s.id %>)"><i class="fas fa-eye"></i> Xem chi tiết</button>
+    <% if (s.trang_thai === 'dang_thuc_hien') { %> <a href="/kiem-ke/thuc-hien/<%= s.id %>" class="btn btn-sm btn-primary">Tiếp tục</a><% } %></td></tr><% }) %>
   </tbody></table></div></div></div>
+
+<!-- Modal Chi tiết Kiểm kê -->
+<div id="kiemKeDetailModal" tabindex="-1" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:999999; align-items:center; justify-content:center;">
+  <div style="width:90%; max-width:900px; background:#fff; border-radius:8px; overflow:hidden; position:relative; box-shadow:0 4px 15px rgba(0,0,0,0.2); margin:0;">
+    <div style="padding:15px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center;">
+      <h5 style="margin:0;">Chi tiết phiên kiểm kê</h5>
+      <button type="button" onclick="closeKiemKeModal()" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+    </div>
+    <div style="padding:15px; max-height:calc(100vh - 200px); overflow-y:auto;">
+      <div id="kiemKeSessionInfo" style="margin-bottom:12px; font-size:14px;"></div>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead><tr style="background:#f8f9fa;">
+          <th style="padding:8px; border:1px solid #ddd;">Tên thuốc</th>
+          <th style="padding:8px; border:1px solid #ddd;">ĐVT</th>
+          <th style="padding:8px; border:1px solid #ddd;">Số lô</th>
+          <th style="padding:8px; border:1px solid #ddd; text-align:right">SL hệ thống</th>
+          <th style="padding:8px; border:1px solid #ddd; text-align:right">SL thực tế</th>
+          <th style="padding:8px; border:1px solid #ddd; text-align:right">Chênh lệch</th>
+        </tr></thead>
+        <tbody id="kiemKeDetailBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){ const m = document.getElementById('kiemKeDetailModal'); if (m && m.parentNode !== document.body) document.body.appendChild(m); })();
+async function viewKiemKeDetails(id) {
+  try {
+    const res = await fetch('/kiem-ke/api/chi-tiet/' + id);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+    const s = result.session;
+    document.getElementById('kiemKeSessionInfo').innerHTML =
+      '<strong>Kho:</strong> ' + s.ten_kho + ' &nbsp; <strong>Người KK:</strong> ' + s.ho_ten +
+      '<br><strong>Bắt đầu:</strong> ' + new Date(s.ngay_bat_dau).toLocaleString('vi-VN') +
+      ' &nbsp; <strong>Kết thúc:</strong> ' + (s.ngay_ket_thuc ? new Date(s.ngay_ket_thuc).toLocaleString('vi-VN') : '-');
+    const tbody = document.getElementById('kiemKeDetailBody');
+    tbody.innerHTML = '';
+    result.details.forEach(d => {
+      const diff = d.chenh_lech == null ? '-' : (d.chenh_lech > 0 ? '+' + d.chenh_lech : d.chenh_lech);
+      const diffColor = d.chenh_lech > 0 ? 'color:#198754' : d.chenh_lech < 0 ? 'color:#dc3545' : '';
+      tbody.insertAdjacentHTML('beforeend',
+        '<tr>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + d.ten_thuoc + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + d.don_vi_tinh + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + (d.so_lo || '-') + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd; text-align:right">' + d.so_luong_he_thong + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd; text-align:right">' + (d.so_luong_thuc_te == null ? '-' : d.so_luong_thuc_te) + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd; text-align:right; ' + diffColor + '">' + diff + '</td>' +
+        '</tr>');
+    });
+    document.getElementById('kiemKeDetailModal').style.display = 'flex';
+  } catch (err) { alert('Lỗi tải chi tiết: ' + err.message); }
+}
+function closeKiemKeModal() { document.getElementById('kiemKeDetailModal').style.display = 'none'; }
+</script>

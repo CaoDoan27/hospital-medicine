@@ -173,6 +173,16 @@ img { max-width: 100%; }
   transition: var(--transition);
 }
 
+/* Collapsed (icon-only) sidebar state */
+body.sidebar-collapsed .sidebar { width: var(--sidebar-collapsed); }
+body.sidebar-collapsed .sidebar .sidebar-user,
+body.sidebar-collapsed .sidebar span,
+body.sidebar-collapsed .sidebar .nav-section { display: none; }
+body.sidebar-collapsed .sidebar .logo span { display: none; }
+body.sidebar-collapsed .sidebar .sidebar-header { justify-content: center; padding: 16px 8px; }
+body.sidebar-collapsed .sidebar .nav-item { justify-content: center; padding: 10px; }
+body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed); }
+
 /* ===== Top Bar ===== */
 .top-bar {
   height: var(--topbar-height);

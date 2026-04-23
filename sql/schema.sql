@@ -15,7 +15,7 @@ CREATE TABLE nguoi_dung (
   ten_dang_nhap VARCHAR(50) NOT NULL UNIQUE,
   mat_khau VARCHAR(255) NOT NULL,
   ho_ten VARCHAR(100) NOT NULL,
-  vai_tro ENUM('duoc_si_tong','duoc_si_kho_le','dieu_duong','ke_toan') NOT NULL,
+  vai_tro ENUM('duoc_si_tong','duoc_si_kho_le','dieu_duong','ke_toan','bac_si') NOT NULL,
   trang_thai TINYINT DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -212,6 +212,17 @@ CREATE TABLE don_thuoc (
   chan_doan VARCHAR(500),
   trang_thai ENUM('moi','da_cap_phat','huy') DEFAULT 'moi',
   FOREIGN KEY (dot_dieu_tri_id) REFERENCES dot_dieu_tri(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE chi_tiet_don_thuoc (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  don_thuoc_id INT NOT NULL,
+  thuoc_id INT NOT NULL,
+  so_luong INT NOT NULL,
+  lieu_dung VARCHAR(200),
+  ghi_chu VARCHAR(500),
+  FOREIGN KEY (don_thuoc_id) REFERENCES don_thuoc(id) ON DELETE CASCADE,
+  FOREIGN KEY (thuoc_id) REFERENCES thuoc(id)
 ) ENGINE=InnoDB;
 
 -- =====================================================
