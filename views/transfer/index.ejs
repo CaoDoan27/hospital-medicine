@@ -18,6 +18,7 @@
         <%= t.trang_thai === 'cho_duyet' ? 'Chờ duyệt' : t.trang_thai === 'dang_van_chuyen' ? 'Đang vận chuyển' : t.trang_thai === 'hoan_thanh' ? 'Hoàn thành' : 'Từ chối' %>
       </span></td>
       <td>
+        <button class="btn btn-sm btn-info" onclick="viewTransferDetails(<%= t.id %>)"><i class="fas fa-eye"></i> Chi tiết</button>
         <% if (t.trang_thai === 'cho_duyet' && user.vai_tro === 'duoc_si_tong') { %>
           <form action="/dieu-chuyen/duyet/<%= t.id %>" method="POST" style="display:inline"><button class="btn btn-sm btn-success"><i class="fas fa-check"></i> Duyệt</button></form>
         <% } else if (t.trang_thai === 'dang_van_chuyen' && user.vai_tro === 'duoc_si_kho_le') { %>
@@ -28,3 +29,58 @@
     </tbody>
   </table></div></div>
 </div>
+
+<!-- Modal Chi tiết Điều Chuyển -->
+<div id="transferDetailModal" class="modal" tabindex="-1" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999999; align-items: center; justify-content: center;">
+  <div class="modal-dialog" style="width: 100%; max-width: 800px; background: #fff; border-radius: 8px; overflow: hidden; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin: 0;">
+    <div class="modal-header" style="padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+      <h5 class="modal-title" style="margin:0;">Chi tiết phiếu điều chuyển / dự trù</h5>
+      <button type="button" class="close" onclick="closeTransferModal()" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 15px; max-height: calc(100vh - 200px); overflow-y: auto;">
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+        <thead>
+          <tr style="background: #f8f9fa;">
+            <th style="padding: 8px; border: 1px solid #ddd;">Tên thuốc</th>
+            <th style="padding: 8px; border: 1px solid #ddd;">ĐVT</th>
+            <th style="padding: 8px; border: 1px solid #ddd; text-align:center">Slg Yêu cầu</th>
+            <th style="padding: 8px; border: 1px solid #ddd; text-align:center">Slg Thực xuất</th>
+          </tr>
+        </thead>
+        <tbody id="transferDetailTableBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+async function viewTransferDetails(id) {
+  try {
+    const modal = document.getElementById('transferDetailModal');
+    if (modal.parentNode !== document.body) {
+      document.body.appendChild(modal);
+    }
+    const res = await fetch(`/dieu-chuyen/api/chi-tiet/${id}`);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+    const tbody = document.getElementById('transferDetailTableBody');
+    tbody.innerHTML = '';
+    result.data.forEach(item => {
+      const row = `<tr>
+        <td style="padding: 8px; border: 1px solid #ddd;">${item.ten_thuoc}</td>
+        <td style="padding: 8px; border: 1px solid #ddd;">${item.don_vi_tinh}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align:center">${item.so_luong_yeu_cau}</td>
+        <td style="padding: 8px; border: 1px solid #ddd; text-align:center">${item.so_luong_thuc_xuat}</td>
+      </tr>`;
+      tbody.insertAdjacentHTML('beforeend', row);
+    });
+    document.getElementById('transferDetailModal').style.display = 'flex';
+  } catch (err) {
+    alert('Lỗi tải chi tiết: ' + err.message);
+  }
+}
+function closeTransferModal() {
+  document.getElementById('transferDetailModal').style.display = 'none';
+}
+</script>

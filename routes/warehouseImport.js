@@ -100,6 +100,22 @@ router.post('/luu', isAuthenticated, authorize('duoc_si_tong'), async (req, res)
   } finally { conn.release(); }
 });
 
+// API: Lấy chi tiết phiếu nhập
+router.get('/api/chi-tiet/:id', isAuthenticated, async (req, res) => {
+  try {
+    const [details] = await db.query(`
+      SELECT cd.*, t.ten_thuoc, t.don_vi_tinh
+      FROM chi_tiet_nhap_kho cd
+      JOIN thuoc t ON cd.thuoc_id = t.id
+      WHERE cd.phieu_nhap_id = ?
+    `, [req.params.id]);
+    res.json({ success: true, data: details });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Lỗi lấy chi tiết phiếu nhập' });
+  }
+});
+
 // API: Lấy thông tin thuốc
 router.get('/api/thuoc/:id', isAuthenticated, async (req, res) => {
   const [drugs] = await db.query('SELECT * FROM thuoc WHERE id = ?', [req.params.id]);

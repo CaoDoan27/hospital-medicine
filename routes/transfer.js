@@ -136,4 +136,20 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), async
   res.redirect('/dieu-chuyen');
 });
 
+// API: Lấy chi tiết phiếu điều chuyển
+router.get('/api/chi-tiet/:id', isAuthenticated, async (req, res) => {
+  try {
+    const [details] = await db.query(`
+      SELECT cd.*, t.ten_thuoc, t.don_vi_tinh
+      FROM chi_tiet_dieu_chuyen cd
+      JOIN thuoc t ON cd.thuoc_id = t.id
+      WHERE cd.phieu_id = ?
+    `, [req.params.id]);
+    res.json({ success: true, data: details });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Lỗi lấy chi tiết phiếu' });
+  }
+});
+
 module.exports = router;
