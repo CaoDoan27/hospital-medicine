@@ -6,8 +6,16 @@ const BhytService = require('../services/bhytService');
 const FefoService = require('../services/fefoService');
 const { parsePage, buildPagination, DEFAULT_PAGE_SIZE } = require('../utils/pagination');
 
+const checkKhoNgoaiTru = (req, res, next) => {
+  if (req.session.user.vai_tro === 'duoc_si_kho_le' && req.session.user.kho_id !== 2) {
+    req.flash('error', 'Bạn không có quyền truy cập Kho lẻ ngoại trú');
+    return res.redirect('/dashboard');
+  }
+  next();
+};
+
 // Trang cấp phát ngoại trú
-router.get('/', isAuthenticated, authorize('duoc_si_kho_le'), async (req, res) => {
+router.get('/', isAuthenticated, authorize('duoc_si_kho_le'), checkKhoNgoaiTru, async (req, res) => {
   try {
     const page = parsePage(req.query.page);
     const search = (req.query.search || '').trim();
@@ -40,7 +48,7 @@ router.get('/', isAuthenticated, authorize('duoc_si_kho_le'), async (req, res) =
 });
 
 // Chi tiết đơn thuốc & tính BHYT
-router.get('/don/:id', isAuthenticated, authorize('duoc_si_kho_le'), async (req, res) => {
+router.get('/don/:id', isAuthenticated, authorize('duoc_si_kho_le'), checkKhoNgoaiTru, async (req, res) => {
   try {
     const [prescription] = await db.query(`
       SELECT dt.id, dt.bac_si_ke, dt.ngay_ke, dt.trang_thai, dt.chan_doan,
@@ -79,7 +87,7 @@ router.get('/don/:id', isAuthenticated, authorize('duoc_si_kho_le'), async (req,
 });
 
 // Xác nhận cấp phát
-router.post('/cap-phat', isAuthenticated, authorize('duoc_si_kho_le'), async (req, res) => {
+router.post('/cap-phat', isAuthenticated, authorize('duoc_si_kho_le'), checkKhoNgoaiTru, async (req, res) => {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
@@ -97,7 +105,7 @@ router.post('/cap-phat', isAuthenticated, authorize('duoc_si_kho_le'), async (re
       const [drug] = await conn.query('SELECT * FROM thuoc WHERE id = ?', [thuocId]);
 
       // FEFO deduction
-      const allocation = await FefoService.allocate(thuocId, 2, soLuong);
+      const allocation = await FefoService.allocate(thuocId, 2, soLuong, conn);
       if (!allocation.success) { await conn.rollback(); req.flash('error', `Số lượng tồn kho không đủ để cấp phát ${drug[0].ten_thuoc}`); return res.redirect(`/cap-phat-ngoai-tru/don/${don_thuoc_id}`); }
 
       // Trừ kho

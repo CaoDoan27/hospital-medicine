@@ -79,7 +79,7 @@ router.post('/duyet/:id', isAuthenticated, authorize('duoc_si_tong'), async (req
       JOIN thuoc t ON cd.thuoc_id = t.id WHERE cd.phieu_id = ?`, [phieuId]);
 
     for (const item of details) {
-      const result = await FefoService.allocate(item.thuoc_id, 1, item.so_luong_yeu_cau);
+      const result = await FefoService.allocate(item.thuoc_id, 1, item.so_luong_yeu_cau, conn);
       if (!result.success) {
         await conn.rollback();
         req.flash('error', `Kho tổng không đủ số lượng tồn cho ${item.ten_thuoc}`);

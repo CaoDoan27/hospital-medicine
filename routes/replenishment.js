@@ -7,9 +7,13 @@ const FefoService = require('../services/fefoService');
 // Lập yêu cầu hoàn ứng (Điều dưỡng)
 router.get('/yeu-cau', isAuthenticated, authorize('dieu_duong'), async (req, res) => {
   try {
-    const khoa = req.query.khoa || 'Khoa Nội';
-    const [khoTuTruc] = await db.query("SELECT * FROM kho WHERE loai_kho = 'tu_truc' AND khoa = ?", [khoa]);
-    const khoId = khoTuTruc.length ? khoTuTruc[0].id : 0;
+    const khoId = req.session.user.kho_id;
+    if (!khoId) { req.flash('error', 'Tài khoản của bạn chưa được phân công quản lý tủ trực'); return res.redirect('/dashboard'); }
+
+    const [khoTuTruc] = await db.query("SELECT * FROM kho WHERE id = ?", [khoId]);
+    if (!khoTuTruc.length || khoTuTruc[0].loai_kho !== 'tu_truc') { req.flash('error', 'Kho được phân công không hợp lệ hoặc không phải tủ trực'); return res.redirect('/dashboard'); }
+
+    const khoa = khoTuTruc[0].khoa;
     const [pendingItems] = await db.query(`
       SELECT h.thuoc_id, t.ten_thuoc, t.don_vi_tinh, SUM(h.so_luong) as tong_sl
       FROM hang_cho_hoan_ung h JOIN thuoc t ON h.thuoc_id = t.id
@@ -67,7 +71,7 @@ router.post('/duyet/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'),
     const [details] = await conn.query('SELECT * FROM chi_tiet_phieu_hoan_ung WHERE phieu_hoan_ung_id = ?', [phieuId]);
 
     for (const item of details) {
-      const allocation = await FefoService.allocate(item.thuoc_id, 3, item.so_luong_yeu_cau);
+      const allocation = await FefoService.allocate(item.thuoc_id, 3, item.so_luong_yeu_cau, conn);
       if (!allocation.success) { await conn.rollback(); req.flash('error', 'Kho nội trú không đủ thuốc'); return res.redirect('/hoan-ung/duyet'); }
       await FefoService.deductStock(conn, allocation.allocation);
       // Add to cabinet stock

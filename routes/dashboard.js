@@ -11,6 +11,16 @@ router.get('/', isAuthenticated, async (req, res) => {
     const [importToday] = await db.query('SELECT COUNT(*) as total FROM phieu_nhap_kho WHERE DATE(ngay_lap) = CURDATE()');
     const [dispenseToday] = await db.query("SELECT COUNT(*) as total FROM don_thuoc WHERE DATE(ngay_ke) = CURDATE() AND trang_thai = 'da_cap_phat'");
     
+    let khoCondition = '';
+    let khoParams = [];
+    let lowStockJoinCondition = '';
+    
+    if (req.session.user.vai_tro === 'duoc_si_kho_le') {
+      khoCondition = 'AND l.kho_id = ?';
+      lowStockJoinCondition = 'AND l.kho_id = ?';
+      khoParams.push(req.session.user.kho_id);
+    }
+
     // Thuốc sắp hết hạn (< 6 tháng)
     const [expiringDrugs] = await db.query(`
       SELECT t.ten_thuoc, l.so_lo, l.han_dung, l.so_luong_ton, k.ten_kho
@@ -19,20 +29,21 @@ router.get('/', isAuthenticated, async (req, res) => {
       JOIN kho k ON l.kho_id = k.id
       WHERE l.han_dung <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH)
         AND l.so_luong_ton > 0
+        ${khoCondition}
       ORDER BY l.han_dung ASC LIMIT 10
-    `);
+    `, khoParams);
     
     // Thuốc sắp hết tồn
     const [lowStockDrugs] = await db.query(`
       SELECT t.ten_thuoc, t.don_vi_tinh, t.dinh_muc_toi_thieu,
         COALESCE(SUM(l.so_luong_ton), 0) as tong_ton
       FROM thuoc t
-      LEFT JOIN lo_thuoc l ON t.id = l.thuoc_id
+      LEFT JOIN lo_thuoc l ON t.id = l.thuoc_id ${lowStockJoinCondition}
       WHERE t.trang_thai = 1
       GROUP BY t.id
       HAVING tong_ton < t.dinh_muc_toi_thieu
       ORDER BY tong_ton ASC LIMIT 10
-    `);
+    `, khoParams);
 
     // Bệnh nhân nội trú đang điều trị
     const [inpatients] = await db.query(`

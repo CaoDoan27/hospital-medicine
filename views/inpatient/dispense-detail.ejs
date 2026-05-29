@@ -1,11 +1,149 @@
 <div class="card"><div class="card-header"><h2><i class="fas fa-eye"></i> Chi tiết phiếu lĩnh PL-<%= phieu.id %></h2><a href="/cap-phat-noi-tru" class="btn btn-outline btn-sm">Quay lại</a></div>
 <div class="card-body">
-  <table><thead><tr><th>Thuốc</th><th>ĐVT</th><th>SL yêu cầu</th><th>Gợi ý FEFO</th><th>Đơn giá thầu</th></tr></thead>
-  <tbody><% details.forEach(d => { %><tr><td><strong><%= d.ten_thuoc %></strong> (<%= d.ham_luong %>)</td><td><%= d.don_vi_tinh %></td><td class="text-center"><%= d.so_luong_yeu_cau %></td>
-    <td><% if(d.fefo_suggestion && d.fefo_suggestion.success) { d.fefo_suggestion.allocation.forEach(a => { %><span class="badge badge-info">Lô <%= a.so_lo %> (HSD: <%= new Date(a.han_dung).toLocaleDateString('vi-VN') %>) × <%= a.so_luong_xuat %></span> <% }) } else { %><span class="badge badge-danger">Không đủ tồn</span><% } %></td>
-    <td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(d.don_gia_thau) %>đ</td></tr><% }) %></tbody></table>
+  <div style="display:flex; gap:20px; margin-bottom:16px; font-size:14px; color:#64748b;">
+    <span><i class="fas fa-hospital"></i> <strong>Khoa:</strong> <%= phieu.khoa %></span>
+    <span><i class="fas fa-calendar"></i> <strong>Ngày lập:</strong> <%= new Date(phieu.ngay_lap).toLocaleString('vi-VN') %></span>
+    <span><i class="fas fa-info-circle"></i> <strong>Trạng thái:</strong>
+      <span class="badge <%= phieu.trang_thai === 'da_cap_phat' ? 'badge-success' : 'badge-warning' %>"><%= phieu.trang_thai === 'da_cap_phat' ? 'Đã cấp phát' : 'Chờ duyệt' %></span>
+    </span>
+  </div>
+
+  <form action="/cap-phat-noi-tru/xac-nhan/<%= phieu.id %>" method="POST" id="formCapPhat">
+  <table><thead><tr>
+    <th>Thuốc</th><th>ĐVT</th><th class="text-center">SL yêu cầu</th>
+    <th class="text-center">Tồn kho</th><th class="text-center">SL cấp phát</th>
+    <th>Gợi ý FEFO</th><th class="text-right">Đơn giá thầu</th>
+  </tr></thead>
+  <tbody><% details.forEach(d => { %>
+    <% const hasStock = d.fefo_suggestion && d.fefo_suggestion.success; %>
+    <% const tonKho = d.ton_kho || 0; %>
+    <% const maxCapPhat = Math.min(d.so_luong_yeu_cau, tonKho); %>
+    <tr class="<%= !hasStock ? 'row-warning' : '' %>">
+      <td><strong><%= d.ten_thuoc %></strong> (<%= d.ham_luong %>)</td>
+      <td><%= d.don_vi_tinh %></td>
+      <td class="text-center"><%= d.so_luong_yeu_cau %></td>
+      <td class="text-center">
+        <% if (tonKho <= 0) { %>
+          <span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> Hết tồn</span>
+        <% } else if (tonKho < d.so_luong_yeu_cau) { %>
+          <span class="badge badge-warning"><%= tonKho %></span>
+        <% } else { %>
+          <span class="badge badge-success"><%= tonKho %></span>
+        <% } %>
+      </td>
+      <td class="text-center">
+        <% if (phieu.trang_thai === 'dang_cho_duyet') { %>
+          <input type="number" name="so_luong_cap_phat[<%= d.id %>]"
+                 value="<%= maxCapPhat %>" min="0" max="<%= d.so_luong_yeu_cau %>"
+                 class="input-qty" data-yeu-cau="<%= d.so_luong_yeu_cau %>" data-ton="<%= tonKho %>"
+                 onchange="validateQty(this)"
+                 style="width:80px; text-align:center; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; font-weight:600;">
+        <% } else { %>
+          <%= d.so_luong_cap_phat || 0 %>
+        <% } %>
+      </td>
+      <td><% if(hasStock) { d.fefo_suggestion.allocation.forEach(a => { %><span class="badge badge-info">Lô <%= a.so_lo %> (HSD: <%= new Date(a.han_dung).toLocaleDateString('vi-VN') %>) × <%= a.so_luong_xuat %></span> <% }) } else { %><span class="badge badge-danger">Không đủ tồn</span><% } %></td>
+      <td class="text-right"><%= new Intl.NumberFormat('vi-VN').format(d.don_gia_thau) %>đ</td>
+    </tr>
+  <% }) %></tbody></table>
+
   <% if(phieu.trang_thai === 'dang_cho_duyet') { %>
-  <form action="/cap-phat-noi-tru/xac-nhan/<%= phieu.id %>" method="POST" class="mt-2">
-    <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Xác nhận cấp phát nội trú?')"><i class="fas fa-check-circle"></i> Xác nhận cấp phát</button>
-  </form><% } %>
+  <div style="display:flex; gap:12px; align-items:center; margin-top:16px; padding:16px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+    <button type="submit" class="btn btn-success btn-lg" id="btnCapPhat" onclick="return confirmDispense()">
+      <i class="fas fa-check-circle"></i> Xác nhận cấp phát
+    </button>
+    <button type="button" class="btn btn-outline btn-sm" onclick="resetQuantities()">
+      <i class="fas fa-undo"></i> Đặt lại SL
+    </button>
+    <div id="dispenseWarning" style="display:none; color:#d97706; font-size:13px;">
+      <i class="fas fa-exclamation-triangle"></i> <span id="warningText"></span>
+    </div>
+  </div>
+  <% } %>
+  </form>
 </div></div>
+
+<style>
+.row-warning { background: #fef3c7 !important; }
+.row-warning:hover { background: #fde68a !important; }
+.input-qty { transition: border-color 0.2s; }
+.input-qty:focus { outline: none; border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.input-qty.qty-zero { border-color: #ef4444 !important; background: #fef2f2; color: #dc2626; }
+.input-qty.qty-partial { border-color: #f59e0b !important; background: #fffbeb; color: #d97706; }
+.input-qty.qty-full { border-color: #22c55e !important; }
+</style>
+
+<script>
+function validateQty(input) {
+  const max = parseInt(input.max);
+  const yeuCau = parseInt(input.dataset.yeuCau);
+  const ton = parseInt(input.dataset.ton);
+  let val = parseInt(input.value) || 0;
+
+  if (val < 0) val = 0;
+  if (val > yeuCau) val = yeuCau;
+  if (val > ton) val = ton;
+  input.value = val;
+
+  // Visual feedback
+  input.classList.remove('qty-zero', 'qty-partial', 'qty-full');
+  if (val === 0) input.classList.add('qty-zero');
+  else if (val < yeuCau) input.classList.add('qty-partial');
+  else input.classList.add('qty-full');
+
+  updateWarning();
+}
+
+function updateWarning() {
+  const inputs = document.querySelectorAll('.input-qty');
+  let zeroCount = 0, partialCount = 0;
+  inputs.forEach(inp => {
+    const val = parseInt(inp.value) || 0;
+    const yc = parseInt(inp.dataset.yeuCau);
+    if (val === 0) zeroCount++;
+    else if (val < yc) partialCount++;
+  });
+  const warn = document.getElementById('dispenseWarning');
+  const text = document.getElementById('warningText');
+  if (zeroCount > 0 || partialCount > 0) {
+    const msgs = [];
+    if (zeroCount > 0) msgs.push(zeroCount + ' thuốc không cấp phát');
+    if (partialCount > 0) msgs.push(partialCount + ' thuốc cấp phát thiếu');
+    text.textContent = msgs.join(', ');
+    warn.style.display = 'block';
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+function resetQuantities() {
+  document.querySelectorAll('.input-qty').forEach(inp => {
+    const yc = parseInt(inp.dataset.yeuCau);
+    const ton = parseInt(inp.dataset.ton);
+    inp.value = Math.min(yc, ton);
+    validateQty(inp);
+  });
+}
+
+function confirmDispense() {
+  const inputs = document.querySelectorAll('.input-qty');
+  let totalCapPhat = 0, zeroCount = 0;
+  inputs.forEach(inp => {
+    const val = parseInt(inp.value) || 0;
+    totalCapPhat += val;
+    if (val === 0) zeroCount++;
+  });
+  if (totalCapPhat === 0) {
+    alert('Không có thuốc nào được cấp phát. Vui lòng điều chỉnh số lượng.');
+    return false;
+  }
+  let msg = 'Xác nhận cấp phát nội trú?';
+  if (zeroCount > 0) msg += '\n\n⚠️ Lưu ý: ' + zeroCount + ' thuốc sẽ không được cấp phát (SL = 0).';
+  return confirm(msg);
+}
+
+// Init visual state on load
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.input-qty').forEach(inp => validateQty(inp));
+});
+</script>

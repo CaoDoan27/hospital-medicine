@@ -5,8 +5,17 @@ const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
 
 router.get('/', isAuthenticated, authorize('dieu_duong'), async (req, res) => {
   try {
-    const khoa = req.query.khoa || 'Khoa Nội';
-    const ngay = req.query.ngay || new Date().toISOString().split('T')[0];
+    const khoId = req.session.user.kho_id;
+    if (!khoId) { req.flash('error', 'Tài khoản của bạn chưa được phân công quản lý tủ trực khoa nào'); return res.redirect('/dashboard'); }
+    const [khoTuTruc] = await db.query("SELECT khoa FROM kho WHERE id = ?", [khoId]);
+    if (!khoTuTruc.length || !khoTuTruc[0].khoa) { req.flash('error', 'Kho được phân công không hợp lệ hoặc không có thông tin khoa'); return res.redirect('/dashboard'); }
+    const khoa = khoTuTruc[0].khoa;
+    
+    let ngay = req.query.ngay || '';
+    // Validate date format YYYY-MM-DD and reasonable year range
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ngay) || parseInt(ngay) < 2000 || parseInt(ngay) > 2100) {
+      ngay = new Date().toISOString().split('T')[0];
+    }
     const [orders] = await db.query(`
       SELECT yl.*, t.ten_thuoc, t.ham_luong, t.don_vi_tinh, bn.ho_ten, d.khoa
       FROM y_lenh yl
@@ -29,7 +38,13 @@ router.post('/tong-hop', isAuthenticated, authorize('dieu_duong'), async (req, r
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
-    const { khoa, selected_orders } = req.body;
+    
+    const khoId = req.session.user.kho_id;
+    if (!khoId) throw new Error('Tài khoản chưa được phân công quản lý khoa nào');
+    const [khoTuTruc] = await conn.query("SELECT khoa FROM kho WHERE id = ?", [khoId]);
+    const khoa = khoTuTruc[0].khoa;
+    
+    const { selected_orders } = req.body;
     const orderIds = Array.isArray(selected_orders) ? selected_orders : [selected_orders];
     if (!orderIds || orderIds.length === 0) { req.flash('error', 'Vui lòng chọn ít nhất 1 y lệnh'); return res.redirect('/y-lenh'); }
 
@@ -55,6 +70,33 @@ router.post('/tong-hop', isAuthenticated, authorize('dieu_duong'), async (req, r
     res.redirect('/y-lenh');
   } catch (err) { await conn.rollback(); console.error(err); req.flash('error', 'Lỗi: ' + err.message); res.redirect('/y-lenh'); }
   finally { conn.release(); }
+});
+
+// API: Lấy y lệnh chưa tổng hợp (dùng cho nút làm mới)
+router.get('/api/y-lenh', isAuthenticated, authorize('dieu_duong'), async (req, res) => {
+  try {
+    const khoId = req.session.user.kho_id;
+    const [khoTuTruc] = await db.query("SELECT khoa FROM kho WHERE id = ?", [khoId]);
+    const khoa = khoTuTruc[0].khoa;
+    
+    let ngay = req.query.ngay || '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ngay) || parseInt(ngay) < 2000 || parseInt(ngay) > 2100) {
+      ngay = new Date().toISOString().split('T')[0];
+    }
+    const [orders] = await db.query(`
+      SELECT yl.*, t.ten_thuoc, t.ham_luong, t.don_vi_tinh, bn.ho_ten, d.khoa
+      FROM y_lenh yl
+      JOIN thuoc t ON yl.thuoc_id = t.id
+      JOIN dot_dieu_tri d ON yl.dot_dieu_tri_id = d.id
+      JOIN benh_nhan bn ON d.benh_nhan_id = bn.id
+      WHERE yl.trang_thai = 'chua_linh' AND d.khoa = ? AND yl.ngay_y_lenh = ?
+      ORDER BY bn.ho_ten, t.ten_thuoc
+    `, [khoa, ngay]);
+    res.json({ success: true, orders, khoa, ngay });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Lỗi lấy y lệnh' });
+  }
 });
 
 // API: Chi tiết phiếu lĩnh

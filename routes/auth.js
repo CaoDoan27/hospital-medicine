@@ -32,7 +32,8 @@ router.post('/login', async (req, res) => {
       id: user.id,
       ten_dang_nhap: user.ten_dang_nhap,
       ho_ten: user.ho_ten,
-      vai_tro: user.vai_tro
+      vai_tro: user.vai_tro,
+      kho_id: user.kho_id
     };
     req.flash('success', `Xin chào, ${user.ho_ten}!`);
     res.redirect('/dashboard');

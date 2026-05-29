@@ -77,12 +77,16 @@
       <% if (['duoc_si_kho_le','dieu_duong'].includes(role)) { %>
       <div class="nav-section">Cấp phát Thuốc</div>
       <% if (role === 'duoc_si_kho_le') { %>
+      <% if (user.kho_id === 2 || !user.kho_id) { %>
       <a href="/cap-phat-ngoai-tru" class="nav-item <%= currentPath.startsWith('/cap-phat-ngoai-tru') ? 'active' : '' %>">
         <i class="fas fa-hand-holding-medical"></i><span>Cấp phát Ngoại trú</span>
       </a>
+      <% } %>
+      <% if (user.kho_id === 3 || !user.kho_id) { %>
       <a href="/cap-phat-noi-tru" class="nav-item <%= currentPath.startsWith('/cap-phat-noi-tru') ? 'active' : '' %>">
         <i class="fas fa-procedures"></i><span>Cấp phát Nội trú</span>
       </a>
+      <% } %>
       <% } %>
       <% if (role === 'dieu_duong') { %>
       <a href="/y-lenh" class="nav-item <%= currentPath.startsWith('/y-lenh') ? 'active' : '' %>">

@@ -1,21 +1,27 @@
 <div class="toolbar">
-  <select class="form-control" style="width:auto" onchange="window.location.href='/y-lenh?khoa='+this.value+'&ngay=<%= ngay %>'">
-    <% ['Khoa Nội','Khoa Ngoại','Khoa Sản','Khoa Cấp cứu'].forEach(k => { %><option value="<%= k %>" <%= khoa===k?'selected':'' %>><%= k %></option><% }) %>
-  </select>
-  <input type="date" class="form-control" style="width:auto" value="<%= ngay %>" onchange="window.location.href='/y-lenh?khoa=<%= khoa %>&ngay='+this.value">
+  <input type="date" class="form-control" id="inputNgay" style="width:auto" value="<%= ngay %>" onchange="window.location.href='/y-lenh?ngay='+this.value">
+  <button type="button" class="btn btn-info" id="btnRefresh" onclick="refreshYLenh()" title="Cập nhật y lệnh mới từ bác sĩ">
+    <i class="fas fa-sync-alt" id="refreshIcon"></i> Tổng hợp y lệnh
+  </button>
 </div>
-<div class="card"><div class="card-header"><h2><i class="fas fa-file-medical"></i> Y lệnh chưa tổng hợp - <%= khoa %></h2><span class="badge badge-info"><%= orders.length %> y lệnh</span></div>
+<div class="card"><div class="card-header"><h2><i class="fas fa-file-medical"></i> Y lệnh chưa tổng hợp - <span id="headerKhoa"><%= khoa %></span></h2><span class="badge badge-info" id="badgeCount"><%= orders.length %> y lệnh</span></div>
 <div class="card-body">
-  <% if (!orders.length) { %><div class="empty-state"><i class="fas fa-check-circle"></i><p>Không có y lệnh chờ tổng hợp</p></div><% } else { %>
-  <form action="/y-lenh/tong-hop" method="POST">
+  <div id="emptyState" style="<%= orders.length ? 'display:none' : '' %>"><div class="empty-state"><i class="fas fa-check-circle"></i><p>Không có y lệnh chờ tổng hợp</p></div></div>
+  <div id="ordersContainer" style="<%= !orders.length ? 'display:none' : '' %>">
+  <form action="/y-lenh/tong-hop" method="POST" id="formTongHop">
     <input type="hidden" name="khoa" value="<%= khoa %>">
     <table><thead><tr><th><input type="checkbox" id="checkAll" onchange="document.querySelectorAll('.yl-check').forEach(c=>c.checked=this.checked)"></th><th>Bệnh nhân</th><th>Thuốc</th><th>SL</th><th>Liều dùng</th><th>Buổi</th><th>BS chỉ định</th></tr></thead>
-    <tbody><% orders.forEach(o => { %><tr><td><input type="checkbox" name="selected_orders" value="<%= o.id %>" class="yl-check"></td>
+    <tbody id="ordersBody"><% orders.forEach(o => { %><tr><td><input type="checkbox" name="selected_orders" value="<%= o.id %>" class="yl-check"></td>
       <td><strong><%= o.ho_ten %></strong></td><td><%= o.ten_thuoc %> (<%= o.ham_luong %>)</td><td><%= o.so_luong %> <%= o.don_vi_tinh %></td>
       <td><%= o.lieu_dung %></td><td><%= o.buoi %></td><td><%= o.bac_si_chi_dinh %></td></tr><% }) %></tbody></table>
     <div class="btn-group mt-2"><button type="submit" class="btn btn-primary"><i class="fas fa-layer-group"></i> Tổng hợp & Tạo phiếu lĩnh</button></div>
-  </form><% } %>
+  </form>
+  </div>
 </div></div>
+
+<!-- Toast thông báo -->
+<div id="refreshToast" style="display:none; position:fixed; top:80px; right:20px; z-index:99999; padding:12px 20px; border-radius:8px; font-size:14px; font-weight:500; box-shadow:0 4px 12px rgba(0,0,0,0.15); transition:opacity 0.3s;"></div>
+
 <div class="card mt-2"><div class="card-header"><h2><i class="fas fa-history"></i> Phiếu lĩnh gần đây</h2></div>
 <div class="card-body" style="padding:0"><table><thead><tr><th>Mã PL</th><th>Khoa</th><th>Người lập</th><th>Ngày</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
 <tbody><% phieuLinh.forEach(p => { %><tr><td>PL-<%= p.id %></td><td><%= p.khoa %></td><td><%= p.nguoi_lap %></td><td><%= new Date(p.ngay_lap).toLocaleString('vi-VN') %></td>
@@ -47,6 +53,72 @@
 
 <script>
 (function(){ const m = document.getElementById('phieuLinhDetailModal'); if (m && m.parentNode !== document.body) document.body.appendChild(m); })();
+
+// Lưu danh sách ID y lệnh đã hiển thị để phát hiện mới
+let currentOrderIds = new Set(<%= JSON.stringify(orders.map(o => o.id)) %>);
+
+function showToast(msg, type) {
+  const t = document.getElementById('refreshToast');
+  t.textContent = msg;
+  t.style.background = type === 'success' ? '#059669' : type === 'warning' ? '#d97706' : '#dc2626';
+  t.style.color = '#fff';
+  t.style.display = 'block';
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.style.display = 'none', 300); }, 3000);
+}
+
+async function refreshYLenh() {
+  const btn = document.getElementById('btnRefresh');
+  const icon = document.getElementById('refreshIcon');
+  btn.disabled = true;
+  icon.classList.add('fa-spin');
+
+  try {
+    const ngay = document.getElementById('inputNgay').value;
+    const res = await fetch('/y-lenh/api/y-lenh?ngay=' + encodeURIComponent(ngay));
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    const orders = data.orders;
+    const newOrderIds = new Set(orders.map(o => o.id));
+    const addedCount = orders.filter(o => !currentOrderIds.has(o.id)).length;
+
+    // Cập nhật bảng
+    const tbody = document.getElementById('ordersBody');
+    tbody.innerHTML = '';
+    orders.forEach(o => {
+      const isNew = !currentOrderIds.has(o.id);
+      tbody.insertAdjacentHTML('beforeend',
+        '<tr' + (isNew ? ' class="row-new"' : '') + '>' +
+        '<td><input type="checkbox" name="selected_orders" value="' + o.id + '" class="yl-check"' + (isNew ? ' checked' : '') + '></td>' +
+        '<td><strong>' + o.ho_ten + '</strong></td>' +
+        '<td>' + o.ten_thuoc + ' (' + o.ham_luong + ')</td>' +
+        '<td>' + o.so_luong + ' ' + o.don_vi_tinh + '</td>' +
+        '<td>' + o.lieu_dung + '</td>' +
+        '<td>' + o.buoi + '</td>' +
+        '<td>' + o.bac_si_chi_dinh + '</td></tr>');
+    });
+
+    // Cập nhật UI
+    document.getElementById('badgeCount').textContent = orders.length + ' y lệnh';
+    document.getElementById('emptyState').style.display = orders.length ? 'none' : '';
+    document.getElementById('ordersContainer').style.display = orders.length ? '' : 'none';
+
+    currentOrderIds = newOrderIds;
+
+    if (addedCount > 0) {
+      showToast('Đã cập nhật ' + addedCount + ' y lệnh mới!', 'success');
+    } else {
+      showToast('Không có y lệnh mới', 'warning');
+    }
+  } catch (err) {
+    showToast('Lỗi: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    icon.classList.remove('fa-spin');
+  }
+}
+
 async function viewPhieuLinhDetails(id) {
   try {
     const res = await fetch('/y-lenh/api/phieu-linh/' + id);
@@ -76,3 +148,9 @@ async function viewPhieuLinhDetails(id) {
 }
 function closePhieuLinhModal() { document.getElementById('phieuLinhDetailModal').style.display = 'none'; }
 </script>
+
+<style>
+.row-new { background: #ecfdf5 !important; animation: highlightNew 2s ease-out; }
+@keyframes highlightNew { 0% { background: #a7f3d0; } 100% { background: #ecfdf5; } }
+#btnRefresh { display:inline-flex; align-items:center; gap:6px; }
+</style>

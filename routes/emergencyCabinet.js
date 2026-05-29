@@ -6,10 +6,13 @@ const BhytService = require('../services/bhytService');
 
 router.get('/', isAuthenticated, authorize('dieu_duong'), async (req, res) => {
   try {
-    const khoa = req.query.khoa || 'Khoa Nội';
-    const [khoTuTruc] = await db.query("SELECT * FROM kho WHERE loai_kho = 'tu_truc' AND khoa = ?", [khoa]);
-    if (!khoTuTruc.length) { req.flash('error', 'Không tìm thấy tủ trực cho khoa này'); return res.redirect('/dashboard'); }
-    const khoId = khoTuTruc[0].id;
+    const khoId = req.session.user.kho_id;
+    if (!khoId) { req.flash('error', 'Tài khoản của bạn chưa được phân công quản lý tủ trực'); return res.redirect('/dashboard'); }
+    
+    const [khoTuTruc] = await db.query("SELECT * FROM kho WHERE id = ?", [khoId]);
+    if (!khoTuTruc.length || khoTuTruc[0].loai_kho !== 'tu_truc') { req.flash('error', 'Kho được phân công không hợp lệ hoặc không phải tủ trực'); return res.redirect('/dashboard'); }
+    
+    const khoa = khoTuTruc[0].khoa;
     const [stock] = await db.query(`
       SELECT tt.*, t.ten_thuoc, t.ham_luong, t.don_vi_tinh, t.don_gia_thau, t.ty_le_thanh_toan
       FROM ton_kho_tu_truc tt JOIN thuoc t ON tt.thuoc_id = t.id
@@ -28,7 +31,10 @@ router.post('/xuat', isAuthenticated, authorize('dieu_duong'), async (req, res) 
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
-    const { kho_id, dot_dieu_tri_id, thuoc_id, so_luong } = req.body;
+    const { dot_dieu_tri_id, thuoc_id, so_luong } = req.body;
+    const kho_id = req.session.user.kho_id;
+    if (!kho_id) { await conn.rollback(); req.flash('error', 'Tài khoản chưa phân công kho'); return res.redirect('/tu-truc'); }
+
     const sl = parseInt(so_luong);
     // Check stock
     const [stockItem] = await conn.query('SELECT * FROM ton_kho_tu_truc WHERE kho_id = ? AND thuoc_id = ? AND so_luong_ton >= ?', [kho_id, thuoc_id, sl]);

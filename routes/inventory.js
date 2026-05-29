@@ -6,8 +6,15 @@ const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
 // Trang kiểm kê & cảnh báo
 router.get('/', isAuthenticated, authorize('duoc_si_tong', 'duoc_si_kho_le'), async (req, res) => {
   try {
-    const [warehouses] = await db.query('SELECT * FROM kho ORDER BY id');
-    const khoId = req.query.kho_id || 1;
+    let warehouses;
+    let khoId = req.query.kho_id || 1;
+    
+    if (req.session.user.vai_tro === 'duoc_si_kho_le') {
+      khoId = req.session.user.kho_id;
+      [warehouses] = await db.query('SELECT * FROM kho WHERE id = ?', [khoId]);
+    } else {
+      [warehouses] = await db.query('SELECT * FROM kho ORDER BY id');
+    }
     // Cảnh báo sắp hết hạn
     const [expiringDrugs] = await db.query(`
       SELECT t.ten_thuoc, t.don_vi_tinh, l.so_lo, l.han_dung, l.so_luong_ton, k.ten_kho
@@ -23,11 +30,18 @@ router.get('/', isAuthenticated, authorize('duoc_si_tong', 'duoc_si_kho_le'), as
       WHERE t.trang_thai = 1 GROUP BY t.id HAVING tong_ton < t.dinh_muc_toi_thieu ORDER BY tong_ton
     `, [khoId]);
     // Lịch sử kiểm kê
+    let sessionCondition = '';
+    let sessionParams = [];
+    if (req.session.user.vai_tro === 'duoc_si_kho_le') {
+      sessionCondition = 'WHERE kk.kho_id = ?';
+      sessionParams.push(khoId);
+    }
     const [sessions] = await db.query(`
       SELECT kk.*, k.ten_kho, nd.ho_ten FROM kiem_ke kk
       JOIN kho k ON kk.kho_id = k.id JOIN nguoi_dung nd ON kk.nguoi_kiem_ke_id = nd.id
+      ${sessionCondition}
       ORDER BY kk.ngay_bat_dau DESC LIMIT 10
-    `);
+    `, sessionParams);
     res.render('inventory/index', { title: 'Kiểm kê & Cảnh báo tồn kho', warehouses, expiringDrugs, lowStock, sessions, khoId: parseInt(khoId) });
   } catch (err) { console.error(err); req.flash('error', 'Lỗi'); res.redirect('/dashboard'); }
 });

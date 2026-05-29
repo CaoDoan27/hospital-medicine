@@ -10,16 +10,20 @@ class FefoService {
    * @param {number} thuocId - ID thuốc
    * @param {number} khoId - ID kho xuất
    * @param {number} soLuongCanXuat - Số lượng cần xuất
-   * @returns {Array} Danh sách lô được phân bổ [{lo_thuoc_id, so_lo, han_dung, so_luong_xuat, so_luong_ton}]
+   * @param {object} [connection] - MySQL connection (dùng trong transaction để đảm bảo tính nhất quán)
+   * @returns {object} { success, allocation, totalAvailable, message }
    */
-  static async allocate(thuocId, khoId, soLuongCanXuat) {
-    // Lấy danh sách lô còn tồn, sắp xếp theo hạn dùng tăng dần (FEFO)
-    const [lots] = await db.query(`
+  static async allocate(thuocId, khoId, soLuongCanXuat, connection = null) {
+    const queryFn = connection || db;
+    // Dùng FOR UPDATE khi trong transaction để lock row, tránh race condition
+    const lockClause = connection ? 'FOR UPDATE' : '';
+    const [lots] = await queryFn.query(`
       SELECT id as lo_thuoc_id, so_lo, han_dung, so_luong_ton, gia_nhap
       FROM lo_thuoc
       WHERE thuoc_id = ? AND kho_id = ? AND so_luong_ton > 0
         AND han_dung > CURDATE()
       ORDER BY han_dung ASC
+      ${lockClause}
     `, [thuocId, khoId]);
 
     const totalAvailable = lots.reduce((sum, l) => sum + l.so_luong_ton, 0);
@@ -49,13 +53,18 @@ class FefoService {
 
   /**
    * Thực hiện trừ kho theo phân bổ FEFO
+   * Kiểm tra affectedRows để đảm bảo trừ kho thành công
+   * @throws {Error} nếu không đủ tồn kho (race condition)
    */
   static async deductStock(connection, allocation) {
     for (const item of allocation) {
-      await connection.query(
+      const [result] = await connection.query(
         'UPDATE lo_thuoc SET so_luong_ton = so_luong_ton - ? WHERE id = ? AND so_luong_ton >= ?',
         [item.so_luong_xuat, item.lo_thuoc_id, item.so_luong_xuat]
       );
+      if (result.affectedRows === 0) {
+        throw new Error(`Lô ${item.so_lo} không đủ tồn kho để xuất ${item.so_luong_xuat} đơn vị. Vui lòng thử lại.`);
+      }
     }
   }
 

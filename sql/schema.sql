@@ -8,21 +8,7 @@ CREATE DATABASE IF NOT EXISTS hospital_medicine
 USE hospital_medicine;
 
 -- =====================================================
--- 1. NGƯỜI DÙNG (Users)
--- =====================================================
-CREATE TABLE nguoi_dung (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  ten_dang_nhap VARCHAR(50) NOT NULL UNIQUE,
-  mat_khau VARCHAR(255) NOT NULL,
-  ho_ten VARCHAR(100) NOT NULL,
-  vai_tro ENUM('duoc_si_tong','duoc_si_kho_le','dieu_duong','ke_toan','bac_si') NOT NULL,
-  trang_thai TINYINT DEFAULT 1,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
--- =====================================================
--- 2. KHO (Warehouses)
+-- 1. KHO (Warehouses)
 -- =====================================================
 CREATE TABLE kho (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -32,6 +18,24 @@ CREATE TABLE kho (
   trang_thai_kho ENUM('binh_thuong','dang_kiem_ke') DEFAULT 'binh_thuong',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+-- =====================================================
+-- 2. NGƯỜI DÙNG (Users)
+-- =====================================================
+CREATE TABLE nguoi_dung (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ten_dang_nhap VARCHAR(50) NOT NULL UNIQUE,
+  mat_khau VARCHAR(255) NOT NULL,
+  ho_ten VARCHAR(100) NOT NULL,
+  vai_tro ENUM('duoc_si_tong','duoc_si_kho_le','dieu_duong','ke_toan','bac_si') NOT NULL,
+  kho_id INT DEFAULT NULL,
+  trang_thai TINYINT DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (kho_id) REFERENCES kho(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- (Kho moved up)
 
 -- =====================================================
 -- 3. NHÀ CUNG CẤP (Suppliers)

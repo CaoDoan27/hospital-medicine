@@ -4,16 +4,6 @@
 USE hospital_medicine;
 
 -- =====================================================
--- NGƯỜI DÙNG (mật khẩu: 123456 - bcrypt hash)
--- =====================================================
-INSERT INTO nguoi_dung (ten_dang_nhap, mat_khau, ho_ten, vai_tro) VALUES
-('ds.tong', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'DS. Nguyễn Văn An', 'duoc_si_tong'),
-('ds.khole', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'DS. Trần Thị Bình', 'duoc_si_kho_le'),
-('dd.noi', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'ĐD. Lê Thị Cúc', 'dieu_duong'),
-('kt.vien', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'KT. Phạm Văn Dũng', 'ke_toan'),
-('bs.nam',  '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'BS. Trần Văn Nam', 'bac_si');
-
--- =====================================================
 -- KHO
 -- =====================================================
 INSERT INTO kho (ten_kho, loai_kho, khoa) VALUES
@@ -24,6 +14,20 @@ INSERT INTO kho (ten_kho, loai_kho, khoa) VALUES
 ('Tủ Trực Khoa Ngoại', 'tu_truc', 'Khoa Ngoại'),
 ('Tủ Trực Khoa Sản', 'tu_truc', 'Khoa Sản'),
 ('Tủ Trực Khoa Cấp cứu', 'tu_truc', 'Khoa Cấp cứu');
+
+-- =====================================================
+-- NGƯỜI DÙNG (mật khẩu: 123456 - bcrypt hash)
+-- =====================================================
+INSERT INTO nguoi_dung (ten_dang_nhap, mat_khau, ho_ten, vai_tro, kho_id) VALUES
+('ds.tong', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'DS. Nguyễn Văn An', 'duoc_si_tong', 1),
+('ds.khole.ngoai', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'DS. Trần Thị Bình (Ngoại trú)', 'duoc_si_kho_le', 2),
+('ds.khole.noi', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'DS. Trần Thị Bình (Nội trú)', 'duoc_si_kho_le', 3),
+('dd.ngoai', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'ĐD. Nguyễn Thị Hoa (Khoa Ngoại)', 'dieu_duong', 5),
+('dd.noi', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'ĐD. Lê Thị Cúc (Khoa Nội)', 'dieu_duong', 4),
+('kt.vien', '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'KT. Phạm Văn Dũng', 'ke_toan', NULL),
+('bs.nam',  '$2a$10$pKsJPDgFJdhBDRAsifZpTuu6vbPwnt45kEnm1PdOccyJJxZzg16.6', 'BS. Trần Văn Nam', 'bac_si', NULL);
+
+-- (Kho moved up)
 
 -- =====================================================
 -- NHÀ CUNG CẤP
