@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
 const FefoService = require('../services/fefoService');
+const { recordStockMovement } = require('../utils/stockMovement');
 
 // Lập yêu cầu hoàn ứng (Điều dưỡng)
 router.get('/yeu-cau', isAuthenticated, authorize('dieu_duong'), async (req, res) => {
@@ -74,6 +75,13 @@ router.post('/duyet/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'),
       const allocation = await FefoService.allocate(item.thuoc_id, 3, item.so_luong_yeu_cau, conn);
       if (!allocation.success) { await conn.rollback(); req.flash('error', 'Kho nội trú không đủ thuốc'); return res.redirect('/hoan-ung/duyet'); }
       await FefoService.deductStock(conn, allocation.allocation);
+
+      // Ghi biến động kho xuất tại kho nội trú (nguồn xuất)
+      await recordStockMovement(conn, {
+        kho_id: 3, thuoc_id: item.thuoc_id, loai_bien_dong: 'xuat_cap_phat',
+        so_luong: item.so_luong_yeu_cau, phieu_lien_quan: `HU-${phieuId}`, nguoi_thuc_hien_id: req.session.user.id
+      });
+
       // Add to cabinet stock
       const [existing] = await conn.query('SELECT id FROM ton_kho_tu_truc WHERE kho_id = ? AND thuoc_id = ?', [phieu[0].kho_tu_truc_id, item.thuoc_id]);
       if (existing.length > 0) {
@@ -82,7 +90,7 @@ router.post('/duyet/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'),
         await conn.query('INSERT INTO ton_kho_tu_truc SET ?', { kho_id: phieu[0].kho_tu_truc_id, thuoc_id: item.thuoc_id, so_luong_ton: item.so_luong_yeu_cau });
       }
       await conn.query('UPDATE chi_tiet_phieu_hoan_ung SET so_luong_thuc_xuat = ? WHERE id = ?', [item.so_luong_yeu_cau, item.id]);
-      await conn.query('INSERT INTO bien_dong_kho SET ?', {
+      await recordStockMovement(conn, {
         kho_id: phieu[0].kho_tu_truc_id, thuoc_id: item.thuoc_id, loai_bien_dong: 'hoan_ung',
         so_luong: item.so_luong_yeu_cau, phieu_lien_quan: `HU-${phieuId}`, nguoi_thuc_hien_id: req.session.user.id
       });

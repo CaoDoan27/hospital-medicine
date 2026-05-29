@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
 const BhytService = require('../services/bhytService');
+const { recordStockMovement } = require('../utils/stockMovement');
 
 router.get('/', isAuthenticated, authorize('dieu_duong'), async (req, res) => {
   try {
@@ -58,9 +59,9 @@ router.post('/xuat', isAuthenticated, authorize('dieu_duong'), async (req, res) 
     // Ghi hàng chờ hoàn ứng
     await conn.query('INSERT INTO hang_cho_hoan_ung SET ?', { kho_tu_truc_id: kho_id, thuoc_id, dot_dieu_tri_id, so_luong: sl });
     // Biến động kho
-    await conn.query('INSERT INTO bien_dong_kho SET ?', {
-      kho_id, thuoc_id, loai_bien_dong: 'xuat_tu_truc', so_luong: sl,
-      phieu_lien_quan: `TT-${dot_dieu_tri_id}`, nguoi_thuc_hien_id: req.session.user.id
+    await recordStockMovement(conn, {
+      kho_id: kho_id, thuoc_id: thuoc_id, loai_bien_dong: 'xuat_tu_truc',
+      so_luong: sl, phieu_lien_quan: `TT-${dot_dieu_tri_id}`, nguoi_thuc_hien_id: req.session.user.id
     });
     await conn.commit();
     req.flash('success', 'Xuất thuốc thành công. Đã ghi nhận viện phí và hàng chờ hoàn ứng.');

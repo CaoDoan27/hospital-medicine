@@ -4,11 +4,15 @@ const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
 const FefoService = require('../services/fefoService');
 const BhytService = require('../services/bhytService');
+const { recordStockMovement } = require('../utils/stockMovement');
 
-const checkKhoNoiTru = (req, res, next) => {
-  if (req.session.user.vai_tro === 'duoc_si_kho_le' && req.session.user.kho_id !== 3) {
-    req.flash('error', 'Bạn không có quyền truy cập Kho lẻ nội trú');
-    return res.redirect('/dashboard');
+const checkKhoNoiTru = async (req, res, next) => {
+  if (req.session.user.vai_tro === 'duoc_si_kho_le') {
+    const [kho] = await db.query('SELECT loai_kho FROM kho WHERE id = ?', [req.session.user.kho_id]);
+    if (!kho.length || kho[0].loai_kho !== 'kho_le_noi_tru') {
+      req.flash('error', 'Bạn không có quyền truy cập Kho lẻ nội trú');
+      return res.redirect('/dashboard');
+    }
   }
   next();
 };
@@ -38,8 +42,9 @@ router.get('/chi-tiet/:id', isAuthenticated, authorize('duoc_si_kho_le'), checkK
       FROM chi_tiet_phieu_linh ct JOIN thuoc t ON ct.thuoc_id = t.id WHERE ct.phieu_linh_id = ?
     `, [req.params.id]);
     // FEFO suggestions + kiểm tra tồn kho thực tế
+    const khoId = req.session.user.kho_id;
     for (const item of details) {
-      const suggestion = await FefoService.allocate(item.thuoc_id, 3, item.so_luong_yeu_cau);
+      const suggestion = await FefoService.allocate(item.thuoc_id, khoId, item.so_luong_yeu_cau);
       item.fefo_suggestion = suggestion;
       item.ton_kho = suggestion.totalAvailable || 0;
     }
@@ -52,6 +57,7 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), check
   try {
     await conn.beginTransaction();
     const phieuLinhId = req.params.id;
+    const khoId = req.session.user.kho_id;
 
     // Kiểm tra phiếu lĩnh hợp lệ
     const [phieuCheck] = await conn.query(
@@ -77,6 +83,7 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), check
 
     const errors = [];
     let hasDispensedItems = false;
+    const dispensedMap = new Map(); // Track SL cấp phát thực tế theo thuoc_id để tính BHYT
 
     for (const item of details) {
       // Lấy SL cấp phát từ form (key là string), mặc định = SL yêu cầu
@@ -96,20 +103,21 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), check
       }
 
       // FEFO allocation trong transaction với FOR UPDATE lock
-      const allocation = await FefoService.allocate(item.thuoc_id, 3, slCapPhat, conn);
+      const allocation = await FefoService.allocate(item.thuoc_id, khoId, slCapPhat, conn);
       if (!allocation.success) {
         // Không đủ tồn → cấp phát tối đa có thể
         if (allocation.totalAvailable > 0) {
-          const partialAlloc = await FefoService.allocate(item.thuoc_id, 3, allocation.totalAvailable, conn);
+          const partialAlloc = await FefoService.allocate(item.thuoc_id, khoId, allocation.totalAvailable, conn);
           if (partialAlloc.success) {
             await FefoService.deductStock(conn, partialAlloc.allocation);
             await conn.query('UPDATE chi_tiet_phieu_linh SET so_luong_cap_phat = ? WHERE id = ?', [allocation.totalAvailable, item.id]);
-            await conn.query('INSERT INTO bien_dong_kho SET ?', {
-              kho_id: 3, thuoc_id: item.thuoc_id, loai_bien_dong: 'xuat_cap_phat',
+            await recordStockMovement(conn, {
+              kho_id: khoId, thuoc_id: item.thuoc_id, loai_bien_dong: 'xuat_cap_phat',
               so_luong: allocation.totalAvailable, phieu_lien_quan: `PL-${phieuLinhId}`, nguoi_thuc_hien_id: req.session.user.id
             });
             errors.push(`${item.ten_thuoc}: Chỉ cấp phát được ${allocation.totalAvailable}/${slCapPhat} (hết tồn kho)`);
             hasDispensedItems = true;
+            dispensedMap.set(item.thuoc_id, { cap_phat: allocation.totalAvailable, yeu_cau: item.so_luong_yeu_cau });
           }
         } else {
           errors.push(`${item.ten_thuoc}: Hết tồn kho, không thể cấp phát`);
@@ -121,11 +129,12 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), check
       // Đủ tồn kho → cấp phát đầy đủ
       await FefoService.deductStock(conn, allocation.allocation);
       await conn.query('UPDATE chi_tiet_phieu_linh SET so_luong_cap_phat = ? WHERE id = ?', [slCapPhat, item.id]);
-      await conn.query('INSERT INTO bien_dong_kho SET ?', {
-        kho_id: 3, thuoc_id: item.thuoc_id, loai_bien_dong: 'xuat_cap_phat',
+      await recordStockMovement(conn, {
+        kho_id: khoId, thuoc_id: item.thuoc_id, loai_bien_dong: 'xuat_cap_phat',
         so_luong: slCapPhat, phieu_lien_quan: `PL-${phieuLinhId}`, nguoi_thuc_hien_id: req.session.user.id
       });
       hasDispensedItems = true;
+      dispensedMap.set(item.thuoc_id, { cap_phat: slCapPhat, yeu_cau: item.so_luong_yeu_cau });
     }
 
     if (!hasDispensedItems) {
@@ -140,6 +149,44 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), check
       const yLenhIds = yLenhLinks.map(l => l.y_lenh_id);
       await conn.query("UPDATE y_lenh SET trang_thai = 'da_linh' WHERE id IN (?)", [yLenhIds]);
     }
+
+    // Ghi nhận chi phí BHYT cho bệnh nhân nội trú
+    if (yLenhLinks.length > 0 && dispensedMap.size > 0) {
+      const yLenhIdsForCost = yLenhLinks.map(l => l.y_lenh_id);
+      const [yLenhDetails] = await conn.query(`
+        SELECT yl.id, yl.dot_dieu_tri_id, yl.thuoc_id, yl.so_luong,
+               t.don_gia_thau, t.ty_le_thanh_toan,
+               d.ma_benh, d.muc_huong, bn.so_the_bhyt
+        FROM y_lenh yl
+        JOIN thuoc t ON yl.thuoc_id = t.id
+        JOIN dot_dieu_tri d ON yl.dot_dieu_tri_id = d.id
+        JOIN benh_nhan bn ON d.benh_nhan_id = bn.id
+        WHERE yl.id IN (?)
+      `, [yLenhIdsForCost]);
+
+      for (const yl of yLenhDetails) {
+        const info = dispensedMap.get(yl.thuoc_id);
+        if (!info || info.cap_phat <= 0) continue;
+
+        // Phân bổ SL cấp phát theo tỷ lệ y lệnh gốc
+        const slThucCap = info.yeu_cau > 0 ? Math.round(yl.so_luong * info.cap_phat / info.yeu_cau) : 0;
+        if (slThucCap <= 0) continue;
+
+        const costSplit = BhytService.calculateCostSplit(
+          slThucCap, yl.don_gia_thau, yl.don_gia_thau,
+          yl.ty_le_thanh_toan, yl.muc_huong
+        );
+
+        await conn.query('INSERT INTO chi_phi_bhyt SET ?', {
+          dot_dieu_tri_id: yl.dot_dieu_tri_id, thuoc_id: yl.thuoc_id,
+          so_luong: slThucCap, don_gia: yl.don_gia_thau,
+          ty_le_tt: yl.ty_le_thanh_toan, muc_huong: yl.muc_huong,
+          tien_bhyt: costSplit.tien_bhyt, tien_bn_cung_tra: costSplit.tien_bn_cung_tra,
+          tien_bn_tu_tuc: costSplit.tien_bn_tu_tuc, nguon: 'noi_tru'
+        });
+      }
+    }
+
     await conn.commit();
 
     if (errors.length > 0) {

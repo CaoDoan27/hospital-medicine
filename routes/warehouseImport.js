@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
+const { recordStockMovement } = require('../utils/stockMovement');
 const { parsePage, buildPagination, DEFAULT_PAGE_SIZE } = require('../utils/pagination');
 
 // Danh sách phiếu nhập
@@ -35,31 +36,32 @@ router.get('/tao', isAuthenticated, authorize('duoc_si_tong'), async (req, res) 
 
 // Lưu phiếu nhập
 router.post('/luu', isAuthenticated, authorize('duoc_si_tong'), async (req, res) => {
+  // --- Validation cơ bản trước khi mở connection (tránh connection leak) ---
+  const { so_hoa_don, nha_cung_cap_id, kho_id, ghi_chu, items } = req.body;
+  if (!so_hoa_don || !nha_cung_cap_id) { req.flash('error', 'Số hóa đơn và Nhà cung cấp không được để trống'); return res.redirect('/nhap-kho/tao'); }
+  const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
+  if (!parsedItems || parsedItems.length === 0) { req.flash('error', 'Phiếu nhập phải có ít nhất 1 thuốc'); return res.redirect('/nhap-kho/tao'); }
+  for (const item of parsedItems) {
+    if (!item.so_lo) { req.flash('error', 'Số lô bắt buộc để quản lý FEFO'); return res.redirect('/nhap-kho/tao'); }
+    const hanDung = new Date(item.han_dung);
+    const sixMonthsLater = new Date(); sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+    if (hanDung < sixMonthsLater) { req.flash('error', `Hạn dùng lô ${item.so_lo} phải lớn hơn ngày hiện tại ít nhất 6 tháng`); return res.redirect('/nhap-kho/tao'); }
+    if (parseInt(item.so_luong) <= 0) { req.flash('error', 'Số lượng phải là số nguyên dương'); return res.redirect('/nhap-kho/tao'); }
+  }
+
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
-    const { so_hoa_don, nha_cung_cap_id, kho_id, ghi_chu, items } = req.body;
-    // Validation
-    if (!so_hoa_don || !nha_cung_cap_id) { req.flash('error', 'Số hóa đơn và Nhà cung cấp không được để trống'); return res.redirect('/nhap-kho/tao'); }
-    const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
-    if (!parsedItems || parsedItems.length === 0) { req.flash('error', 'Phiếu nhập phải có ít nhất 1 thuốc'); return res.redirect('/nhap-kho/tao'); }
 
-    let tongTien = 0;
-    // Validate each item
+    // Validate giá nhập <= giá thầu (cần DB)
     for (const item of parsedItems) {
-      if (!item.so_lo) { req.flash('error', 'Số lô bắt buộc để quản lý FEFO'); return res.redirect('/nhap-kho/tao'); }
-      const hanDung = new Date(item.han_dung);
-      const sixMonthsLater = new Date(); sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
-      if (hanDung < sixMonthsLater) { req.flash('error', `Hạn dùng lô ${item.so_lo} phải lớn hơn ngày hiện tại ít nhất 6 tháng`); return res.redirect('/nhap-kho/tao'); }
-      if (parseInt(item.so_luong) <= 0) { req.flash('error', 'Số lượng phải là số nguyên dương'); return res.redirect('/nhap-kho/tao'); }
-      // Check giá nhập <= giá thầu
       const [drug] = await conn.query('SELECT don_gia_thau FROM thuoc WHERE id = ?', [item.thuoc_id]);
       if (drug.length > 0 && parseFloat(item.don_gia) > drug[0].don_gia_thau) {
-        req.flash('error', `Đơn giá nhập không được cao hơn đơn giá trúng thầu`);
-        return res.redirect('/nhap-kho/tao');
+        throw new Error('Đơn giá nhập không được cao hơn đơn giá trúng thầu');
       }
     }
 
+    let tongTien = 0;
     // Insert phiếu nhập
     const [result] = await conn.query('INSERT INTO phieu_nhap_kho SET ?', { so_hoa_don, nha_cung_cap_id, kho_id: kho_id || 1, nguoi_lap_id: req.session.user.id, ghi_chu });
     const phieuId = result.insertId;
@@ -81,15 +83,15 @@ router.post('/luu', isAuthenticated, authorize('duoc_si_tong'), async (req, res)
         await conn.query('INSERT INTO lo_thuoc SET ?', {
           thuoc_id: item.thuoc_id, so_lo: item.so_lo, han_dung: item.han_dung,
           gia_nhap: parseFloat(item.don_gia), thue_vat: parseFloat(item.thue_vat || 0),
-          kho_id: kho_id || 1, so_luong_ton: parseInt(item.so_luong)
+          kho_id: kho_id || 1, so_luong_ton: item.so_luong
         });
       }
 
       // Ghi biến động kho
-      await conn.query('INSERT INTO bien_dong_kho SET ?', {
-        kho_id: kho_id || 1, thuoc_id: item.thuoc_id, loai_bien_dong: 'nhap',
-        so_luong: parseInt(item.so_luong), phieu_lien_quan: `NK-${phieuId}`,
-        nguoi_thuc_hien_id: req.session.user.id
+      await recordStockMovement(conn, {
+        kho_id: kho_id || 1, thuoc_id: item.thuoc_id,
+        loai_bien_dong: 'nhap', so_luong: item.so_luong,
+        phieu_lien_quan: `NK-${so_hoa_don}`, nguoi_thuc_hien_id: req.session.user.id
       });
     }
 

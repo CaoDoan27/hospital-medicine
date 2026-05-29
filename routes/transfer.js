@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
 const FefoService = require('../services/fefoService');
+const { recordStockMovement } = require('../utils/stockMovement');
 const { parsePage, buildPagination, DEFAULT_PAGE_SIZE } = require('../utils/pagination');
 
 // Danh sách phiếu điều chuyển
@@ -86,11 +87,23 @@ router.post('/duyet/:id', isAuthenticated, authorize('duoc_si_tong'), async (req
         return res.redirect('/dieu-chuyen');
       }
       await FefoService.deductStock(conn, result.allocation);
-      const totalExported = result.allocation.reduce((s, a) => s + a.so_luong_xuat, 0);
-      await conn.query('UPDATE chi_tiet_dieu_chuyen SET so_luong_thuc_xuat = ?, so_lo = ?, han_dung = ? WHERE id = ?',
-        [totalExported, result.allocation[0].so_lo, result.allocation[0].han_dung, item.id]);
 
-      await conn.query('INSERT INTO bien_dong_kho SET ?', {
+      // Lưu chi tiết từng lô FEFO phân bổ (đảm bảo kho nhận nhập đúng lô)
+      for (let i = 0; i < result.allocation.length; i++) {
+        const alloc = result.allocation[i];
+        if (i === 0) {
+          // Cập nhật dòng chi tiết gốc với lô đầu tiên
+          await conn.query('UPDATE chi_tiet_dieu_chuyen SET so_luong_thuc_xuat = ?, lo_thuoc_id = ?, so_lo = ?, han_dung = ? WHERE id = ?',
+            [alloc.so_luong_xuat, alloc.lo_thuoc_id, alloc.so_lo, alloc.han_dung, item.id]);
+        } else {
+          // Thêm dòng mới cho các lô tiếp theo
+          await conn.query('INSERT INTO chi_tiet_dieu_chuyen (phieu_id, thuoc_id, lo_thuoc_id, so_lo, han_dung, so_luong_yeu_cau, so_luong_thuc_xuat) VALUES (?,?,?,?,?,0,?)',
+            [phieuId, item.thuoc_id, alloc.lo_thuoc_id, alloc.so_lo, alloc.han_dung, alloc.so_luong_xuat]);
+        }
+      }
+
+      const totalExported = result.allocation.reduce((s, a) => s + a.so_luong_xuat, 0);
+      await recordStockMovement(conn, {
         kho_id: 1, thuoc_id: item.thuoc_id, loai_bien_dong: 'xuat_dieu_chuyen',
         so_luong: totalExported, phieu_lien_quan: `DC-${phieuId}`, nguoi_thuc_hien_id: req.session.user.id
       });
@@ -119,14 +132,18 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), async
         const [existingLot] = await conn.query('SELECT id FROM lo_thuoc WHERE thuoc_id = ? AND so_lo = ? AND kho_id = ?',
           [item.thuoc_id, item.so_lo, phieu[0].kho_nhan_id]);
         if (existingLot.length > 0) {
-          await conn.query('UPDATE lo_thuoc SET so_luong_ton = so_luong_ton + ? WHERE id = ?', [item.so_luong_thuc_xuat, existingLot[0].id]);
+          await conn.query('UPDATE lo_thuoc SET so_luong_ton = so_luong_ton + ? WHERE id = ?',
+            [item.so_luong_thuc_xuat, existingLot[0].id]);
         } else {
+          // Lấy giá nhập từ lô gốc (thông qua lo_thuoc_id lưu ở chi_tiet_dieu_chuyen)
+          const [originalLot] = await conn.query('SELECT gia_nhap FROM lo_thuoc WHERE id = ?', [item.lo_thuoc_id]);
+          const giaNhap = originalLot.length ? originalLot[0].gia_nhap : 0;
           await conn.query('INSERT INTO lo_thuoc SET ?', {
             thuoc_id: item.thuoc_id, so_lo: item.so_lo, han_dung: item.han_dung,
-            gia_nhap: 0, kho_id: phieu[0].kho_nhan_id, so_luong_ton: item.so_luong_thuc_xuat
+            gia_nhap: giaNhap, kho_id: phieu[0].kho_nhan_id, so_luong_ton: item.so_luong_thuc_xuat
           });
         }
-        await conn.query('INSERT INTO bien_dong_kho SET ?', {
+        await recordStockMovement(conn, {
           kho_id: phieu[0].kho_nhan_id, thuoc_id: item.thuoc_id, loai_bien_dong: 'nhap_dieu_chuyen',
           so_luong: item.so_luong_thuc_xuat, phieu_lien_quan: `DC-${phieuId}`, nguoi_thuc_hien_id: req.session.user.id
         });

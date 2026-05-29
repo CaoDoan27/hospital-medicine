@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { isAuthenticated, authorize } = require('../middleware/authMiddleware');
+const { recordStockMovement } = require('../utils/stockMovement');
 
 // Trang kiểm kê & cảnh báo
 router.get('/', isAuthenticated, authorize('duoc_si_tong', 'duoc_si_kho_le'), async (req, res) => {
@@ -70,7 +71,7 @@ router.post('/bat-dau', isAuthenticated, authorize('duoc_si_tong', 'duoc_si_kho_
 });
 
 // Trang thực hiện kiểm kê
-router.get('/thuc-hien/:id', isAuthenticated, async (req, res) => {
+router.get('/thuc-hien/:id', isAuthenticated, authorize('duoc_si_tong', 'duoc_si_kho_le'), async (req, res) => {
   try {
     const [session] = await db.query('SELECT kk.*, k.ten_kho FROM kiem_ke kk JOIN kho k ON kk.kho_id = k.id WHERE kk.id = ?', [req.params.id]);
     const [details] = await db.query(`
@@ -102,7 +103,7 @@ router.get('/api/chi-tiet/:id', isAuthenticated, async (req, res) => {
 });
 
 // Hoàn tất kiểm kê
-router.post('/hoan-tat/:id', isAuthenticated, async (req, res) => {
+router.post('/hoan-tat/:id', isAuthenticated, authorize('duoc_si_tong', 'duoc_si_kho_le'), async (req, res) => {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
@@ -118,14 +119,16 @@ router.post('/hoan-tat/:id', isAuthenticated, async (req, res) => {
       await conn.query('UPDATE chi_tiet_kiem_ke SET so_luong_thuc_te = ? WHERE id = ?', [slThucTe, item.id]);
       // Cập nhật tồn kho
       if (item.lo_thuoc_id) {
-        const [lot] = await conn.query('SELECT so_luong_ton FROM lo_thuoc WHERE id = ?', [item.lo_thuoc_id]);
+        const [lot] = await conn.query('SELECT so_luong_ton, thuoc_id FROM lo_thuoc WHERE id = ?', [item.lo_thuoc_id]);
         await conn.query('UPDATE lo_thuoc SET so_luong_ton = ? WHERE id = ?', [slThucTe, item.lo_thuoc_id]);
         const diff = slThucTe - (lot[0]?.so_luong_ton || 0);
         if (diff !== 0) {
-          await conn.query('INSERT INTO bien_dong_kho SET ?', {
-            kho_id: session[0].kho_id, thuoc_id: item.thuoc_id,
+          await recordStockMovement(conn, {
+            kho_id: session[0].kho_id,
+            thuoc_id: lot[0].thuoc_id,
             loai_bien_dong: diff > 0 ? 'kiem_ke_tang' : 'kiem_ke_giam',
-            so_luong: Math.abs(diff), phieu_lien_quan: `KK-${kiemKeId}`,
+            so_luong: Math.abs(diff),
+            phieu_lien_quan: `KK-${kiemKeId}`,
             nguoi_thuc_hien_id: req.session.user.id
           });
         }
