@@ -14,19 +14,35 @@ router.get('/', isAuthenticated, authorize('duoc_si_tong', 'ke_toan'), async (re
 
     if (tuNgay && denNgay) {
       if (loai === 'nxt') {
-        // Báo cáo Nhập - Xuất - Tồn
+        // Báo cáo Nhập - Xuất - Tồn (đầy đủ các loại biến động)
         const [data] = await db.query(`
           SELECT t.ten_thuoc, t.don_vi_tinh, t.ham_luong,
-            COALESCE(SUM(CASE WHEN bd.loai_bien_dong = 'nhap' THEN bd.so_luong ELSE 0 END), 0) as nhap,
-            COALESCE(SUM(CASE WHEN bd.loai_bien_dong LIKE 'xuat%' THEN bd.so_luong ELSE 0 END), 0) as xuat,
-            COALESCE((SELECT SUM(l.so_luong_ton) FROM lo_thuoc l WHERE l.thuoc_id = t.id AND l.kho_id = ?), 0) as ton_cuoi
+            -- Tồn đầu kỳ = Tồn hiện tại - SUM(nhập sau tuNgay) + SUM(xuất sau tuNgay)
+            COALESCE((SELECT SUM(l.so_luong_ton) FROM lo_thuoc l WHERE l.thuoc_id = t.id AND l.kho_id = ?), 0)
+              - COALESCE(SUM(CASE WHEN bd.loai_bien_dong IN ('nhap','nhap_dieu_chuyen','kiem_ke_tang','hoan_ung')
+                  AND bd.ngay_bien_dong >= ? THEN bd.so_luong ELSE 0 END), 0)
+              + COALESCE(SUM(CASE WHEN bd.loai_bien_dong IN ('xuat_cap_phat','xuat_dieu_chuyen','xuat_tu_truc','kiem_ke_giam')
+                  AND bd.ngay_bien_dong >= ? THEN bd.so_luong ELSE 0 END), 0)
+            as ton_dau_ky,
+            -- Nhập trong kỳ (tất cả loại nhập)
+            COALESCE(SUM(CASE WHEN bd.loai_bien_dong IN ('nhap','nhap_dieu_chuyen','kiem_ke_tang','hoan_ung')
+              AND bd.ngay_bien_dong BETWEEN ? AND ? THEN bd.so_luong ELSE 0 END), 0) as nhap,
+            -- Xuất trong kỳ (tất cả loại xuất)
+            COALESCE(SUM(CASE WHEN bd.loai_bien_dong IN ('xuat_cap_phat','xuat_dieu_chuyen','xuat_tu_truc','kiem_ke_giam')
+              AND bd.ngay_bien_dong BETWEEN ? AND ? THEN bd.so_luong ELSE 0 END), 0) as xuat,
+            -- Tồn cuối kỳ = tồn đầu kỳ + nhập - xuất (tính lại ở client hoặc dùng subquery)
+            COALESCE((SELECT SUM(l.so_luong_ton) FROM lo_thuoc l WHERE l.thuoc_id = t.id AND l.kho_id = ?), 0)
+              - COALESCE(SUM(CASE WHEN bd.loai_bien_dong IN ('nhap','nhap_dieu_chuyen','kiem_ke_tang','hoan_ung')
+                  AND bd.ngay_bien_dong > ? THEN bd.so_luong ELSE 0 END), 0)
+              + COALESCE(SUM(CASE WHEN bd.loai_bien_dong IN ('xuat_cap_phat','xuat_dieu_chuyen','xuat_tu_truc','kiem_ke_giam')
+                  AND bd.ngay_bien_dong > ? THEN bd.so_luong ELSE 0 END), 0)
+            as ton_cuoi
           FROM thuoc t
           LEFT JOIN bien_dong_kho bd ON t.id = bd.thuoc_id AND bd.kho_id = ?
-            AND bd.ngay_bien_dong BETWEEN ? AND ?
           WHERE t.trang_thai = 1
           GROUP BY t.id HAVING nhap > 0 OR xuat > 0 OR ton_cuoi > 0
           ORDER BY t.ten_thuoc
-        `, [khoId, khoId, tuNgay, denNgay + ' 23:59:59']);
+        `, [khoId, tuNgay, tuNgay, tuNgay, denNgay + ' 23:59:59', tuNgay, denNgay + ' 23:59:59', khoId, denNgay + ' 23:59:59', denNgay + ' 23:59:59', khoId]);
         reportData = data;
       } else if (loai === 'han_dung') {
         const [data] = await db.query(`

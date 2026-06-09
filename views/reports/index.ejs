@@ -13,9 +13,9 @@
 <% if(reportData.length){ %>
 <div class="card"><div class="card-header"><h2><%= loai==='nxt'?'Báo cáo N-X-T':'Báo cáo Hạn dùng' %></h2><span class="badge badge-info"><%= reportData.length %> dòng</span></div>
 <div class="card-body" style="padding:0"><div class="table-wrapper"><table>
-<% if(loai==='nxt'){ %><thead><tr><th>#</th><th>Tên thuốc</th><th>ĐVT</th><th>Nhập</th><th>Xuất</th><th>Tồn cuối</th></tr></thead>
+<% if(loai==='nxt'){ %><thead><tr><th>#</th><th>Tên thuốc</th><th>ĐVT</th><th>Tồn đầu kỳ</th><th>Nhập</th><th>Xuất</th><th>Tồn cuối</th></tr></thead>
 <tbody><% reportData.forEach((r,i) => { %><tr><td><%= i+1 %></td><td><%= r.ten_thuoc %></td><td><%= r.don_vi_tinh %></td>
-<td class="text-right text-success"><%= r.nhap %></td><td class="text-right text-danger"><%= r.xuat %></td><td class="text-right fw-bold"><%= r.ton_cuoi %></td></tr><% }) %></tbody>
+<td class="text-right"><%= r.ton_dau_ky %></td><td class="text-right text-success"><%= r.nhap %></td><td class="text-right text-danger"><%= r.xuat %></td><td class="text-right fw-bold"><%= r.ton_cuoi %></td></tr><% }) %></tbody>
 <% } else { %><thead><tr><th>#</th><th>Tên thuốc</th><th>ĐVT</th><th>Số lô</th><th>Hạn dùng</th><th>Ngày còn lại</th><th>Tồn</th></tr></thead>
 <tbody><% reportData.forEach((r,i) => { %><tr><td><%= i+1 %></td><td><%= r.ten_thuoc %></td><td><%= r.don_vi_tinh %></td><td><%= r.so_lo %></td>
 <td><%= new Date(r.han_dung).toLocaleDateString('vi-VN') %></td>

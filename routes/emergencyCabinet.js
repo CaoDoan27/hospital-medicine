@@ -17,7 +17,9 @@ router.get('/', isAuthenticated, authorize('dieu_duong'), async (req, res) => {
     const [stock] = await db.query(`
       SELECT tt.*, t.ten_thuoc, t.ham_luong, t.don_vi_tinh, t.don_gia_thau, t.ty_le_thanh_toan
       FROM ton_kho_tu_truc tt JOIN thuoc t ON tt.thuoc_id = t.id
-      WHERE tt.kho_id = ? AND tt.so_luong_ton > 0 ORDER BY t.ten_thuoc
+      WHERE tt.kho_id = ? AND tt.so_luong_ton > 0
+        AND (tt.han_dung IS NULL OR tt.han_dung > CURDATE())
+      ORDER BY t.ten_thuoc
     `, [khoId]);
     const [patients] = await db.query(`
       SELECT bn.*, d.id as dot_id, d.ma_benh, d.chan_doan_lam_sang, d.muc_huong, d.khoa
@@ -37,9 +39,12 @@ router.post('/xuat', isAuthenticated, authorize('dieu_duong'), async (req, res) 
     if (!kho_id) { await conn.rollback(); req.flash('error', 'Tài khoản chưa phân công kho'); return res.redirect('/tu-truc'); }
 
     const sl = parseInt(so_luong);
-    // Check stock
-    const [stockItem] = await conn.query('SELECT * FROM ton_kho_tu_truc WHERE kho_id = ? AND thuoc_id = ? AND so_luong_ton >= ?', [kho_id, thuoc_id, sl]);
-    if (!stockItem.length) { await conn.rollback(); req.flash('error', 'Tủ trực hết thuốc hoặc không đủ số lượng'); return res.redirect('/tu-truc'); }
+    // Check stock - kiểm tra tồn kho và hạn dùng
+    const [stockItem] = await conn.query(
+      'SELECT * FROM ton_kho_tu_truc WHERE kho_id = ? AND thuoc_id = ? AND so_luong_ton >= ? AND (han_dung IS NULL OR han_dung > CURDATE())',
+      [kho_id, thuoc_id, sl]
+    );
+    if (!stockItem.length) { await conn.rollback(); req.flash('error', 'Tủ trực hết thuốc, không đủ số lượng hoặc thuốc đã hết hạn'); return res.redirect('/tu-truc'); }
     // Trừ tồn kho tủ trực
     await conn.query('UPDATE ton_kho_tu_truc SET so_luong_ton = so_luong_ton - ? WHERE id = ?', [sl, stockItem[0].id]);
     // Tính BHYT
@@ -47,7 +52,10 @@ router.post('/xuat', isAuthenticated, authorize('dieu_duong'), async (req, res) 
     const [dotDT] = await conn.query('SELECT * FROM dot_dieu_tri WHERE id = ?', [dot_dieu_tri_id]);
     const [bn] = await conn.query('SELECT * FROM benh_nhan WHERE id = ?', [dotDT[0].benh_nhan_id]);
     const insuranceData = await BhytService.checkInsuranceCard(bn[0].so_the_bhyt);
-    const mucHuong = await BhytService.determineCoverageRate(bn[0], dotDT[0].ma_benh, insuranceData);
+    let mucHuong = dotDT[0].muc_huong;
+    if (mucHuong == null) {
+      mucHuong = await BhytService.determineCoverageRate(bn[0], dotDT[0].ma_benh, insuranceData);
+    }
     const costSplit = BhytService.calculateCostSplit(sl, drug[0].don_gia_thau, drug[0].don_gia_thau, drug[0].ty_le_thanh_toan, mucHuong);
     // Ghi nhận chi phí
     await conn.query('INSERT INTO chi_phi_bhyt SET ?', {

@@ -30,14 +30,18 @@ router.get('/', isAuthenticated, authorize('duoc_si_tong', 'duoc_si_kho_le'), as
 // Form tạo phiếu dự trù (Kho lẻ)
 router.get('/tao', isAuthenticated, authorize('duoc_si_kho_le'), async (req, res) => {
   try {
+    // Tìm kho tổng động từ DB
+    const [khoTongRows] = await db.query("SELECT id FROM kho WHERE loai_kho = 'kho_tong' LIMIT 1");
+    const khoTongId = khoTongRows.length ? khoTongRows[0].id : 1;
+
     const [drugs] = await db.query(`
       SELECT t.id, t.ten_thuoc, t.ham_luong, t.don_vi_tinh,
         COALESCE(SUM(l.so_luong_ton), 0) as ton_kho_tong
       FROM thuoc t
-      LEFT JOIN lo_thuoc l ON t.id = l.thuoc_id AND l.kho_id = 1 AND l.han_dung > CURDATE()
+      LEFT JOIN lo_thuoc l ON t.id = l.thuoc_id AND l.kho_id = ? AND l.han_dung > CURDATE()
       WHERE t.trang_thai = 1
       GROUP BY t.id ORDER BY t.ten_thuoc
-    `);
+    `, [khoTongId]);
     const [warehouses] = await db.query("SELECT * FROM kho WHERE loai_kho IN ('kho_le_ngoai_tru','kho_le_noi_tru','tu_truc')");
     res.render('transfer/form', { title: 'Lập phiếu dự trù', drugs, warehouses });
   } catch (err) { console.error(err); req.flash('error', 'Lỗi'); res.redirect('/dieu-chuyen'); }
@@ -52,8 +56,13 @@ router.post('/luu', isAuthenticated, authorize('duoc_si_kho_le'), async (req, re
     const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
     if (!parsedItems || parsedItems.length === 0) { req.flash('error', 'Phiếu phải có ít nhất 1 thuốc'); return res.redirect('/dieu-chuyen/tao'); }
 
+    // Tìm kho tổng động từ DB
+    const [khoTongRows] = await conn.query("SELECT id FROM kho WHERE loai_kho = 'kho_tong' LIMIT 1");
+    if (!khoTongRows.length) { await conn.rollback(); req.flash('error', 'Không tìm thấy Kho tổng trong hệ thống'); return res.redirect('/dieu-chuyen/tao'); }
+    const khoTongId = khoTongRows[0].id;
+
     const [result] = await conn.query('INSERT INTO phieu_dieu_chuyen SET ?', {
-      loai_phieu: 'DIEU_CHUYEN', kho_xuat_id: 1, kho_nhan_id,
+      loai_phieu: 'DIEU_CHUYEN', kho_xuat_id: khoTongId, kho_nhan_id,
       nguoi_lap_id: req.session.user.id, trang_thai: 'cho_duyet', ghi_chu
     });
 
@@ -75,12 +84,26 @@ router.post('/duyet/:id', isAuthenticated, authorize('duoc_si_tong'), async (req
   try {
     await conn.beginTransaction();
     const phieuId = req.params.id;
+
+    // Lấy phiếu điều chuyển để biết kho xuất
+    const [phieuDC] = await conn.query('SELECT * FROM phieu_dieu_chuyen WHERE id = ?', [phieuId]);
+    if (!phieuDC.length) { await conn.rollback(); req.flash('error', 'Không tìm thấy phiếu điều chuyển'); return res.redirect('/dieu-chuyen'); }
+    const khoXuatId = phieuDC[0].kho_xuat_id;
+
+    // Kiểm tra kho xuất đang kiểm kê
+    const [khoXuatCheck] = await conn.query('SELECT trang_thai_kho FROM kho WHERE id = ?', [khoXuatId]);
+    if (khoXuatCheck.length && khoXuatCheck[0].trang_thai_kho === 'dang_kiem_ke') {
+      await conn.rollback();
+      req.flash('error', 'Kho xuất đang kiểm kê, không thể duyệt điều chuyển');
+      return res.redirect('/dieu-chuyen');
+    }
+
     const [details] = await conn.query(`
       SELECT cd.*, t.ten_thuoc FROM chi_tiet_dieu_chuyen cd
       JOIN thuoc t ON cd.thuoc_id = t.id WHERE cd.phieu_id = ?`, [phieuId]);
 
     for (const item of details) {
-      const result = await FefoService.allocate(item.thuoc_id, 1, item.so_luong_yeu_cau, conn);
+      const result = await FefoService.allocate(item.thuoc_id, khoXuatId, item.so_luong_yeu_cau, conn);
       if (!result.success) {
         await conn.rollback();
         req.flash('error', `Kho tổng không đủ số lượng tồn cho ${item.ten_thuoc}`);
@@ -104,7 +127,7 @@ router.post('/duyet/:id', isAuthenticated, authorize('duoc_si_tong'), async (req
 
       const totalExported = result.allocation.reduce((s, a) => s + a.so_luong_xuat, 0);
       await recordStockMovement(conn, {
-        kho_id: 1, thuoc_id: item.thuoc_id, loai_bien_dong: 'xuat_dieu_chuyen',
+        kho_id: khoXuatId, thuoc_id: item.thuoc_id, loai_bien_dong: 'xuat_dieu_chuyen',
         so_luong: totalExported, phieu_lien_quan: `DC-${phieuId}`, nguoi_thuc_hien_id: req.session.user.id
       });
     }

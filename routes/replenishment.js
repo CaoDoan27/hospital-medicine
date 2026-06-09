@@ -39,11 +39,15 @@ router.post('/yeu-cau/luu', isAuthenticated, authorize('dieu_duong'), async (req
     const [result] = await conn.query('INSERT INTO phieu_hoan_ung SET ?', {
       kho_tu_truc_id: kho_id, khoa_yeu_cau: khoa, nguoi_lap_id: req.session.user.id
     });
+    const thuocIds = [];
     for (const item of parsedItems) {
       await conn.query('INSERT INTO chi_tiet_phieu_hoan_ung (phieu_hoan_ung_id, thuoc_id, so_luong_yeu_cau) VALUES (?,?,?)',
         [result.insertId, item.thuoc_id, parseInt(item.so_luong)]);
+      thuocIds.push(item.thuoc_id);
     }
-    await conn.query("UPDATE hang_cho_hoan_ung SET trang_thai = 'da_lap_phieu' WHERE kho_tu_truc_id = ? AND trang_thai = 'cho_lap_phieu'", [kho_id]);
+    if (thuocIds.length > 0) {
+      await conn.query("UPDATE hang_cho_hoan_ung SET trang_thai = 'da_lap_phieu' WHERE kho_tu_truc_id = ? AND trang_thai = 'cho_lap_phieu' AND thuoc_id IN (?)", [kho_id, thuocIds]);
+    }
     await conn.commit();
     req.flash('success', 'Đã gửi yêu cầu hoàn ứng');
   } catch (err) { await conn.rollback(); console.error(err); req.flash('error', 'Lỗi: ' + err.message); }
@@ -71,14 +75,26 @@ router.post('/duyet/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'),
     const [phieu] = await conn.query('SELECT * FROM phieu_hoan_ung WHERE id = ?', [phieuId]);
     const [details] = await conn.query('SELECT * FROM chi_tiet_phieu_hoan_ung WHERE phieu_hoan_ung_id = ?', [phieuId]);
 
+    // Tìm kho lẻ nội trú động từ DB thay vì hard-code
+    const khoNoiTruId = req.session.user.kho_id;
+    const [khoNoiTru] = await conn.query("SELECT id, trang_thai_kho FROM kho WHERE id = ? AND loai_kho = 'kho_le_noi_tru'", [khoNoiTruId]);
+    if (!khoNoiTru.length) { await conn.rollback(); req.flash('error', 'Không tìm thấy kho lẻ nội trú'); return res.redirect('/hoan-ung/duyet'); }
+
+    // Kiểm tra kho đang kiểm kê
+    if (khoNoiTru[0].trang_thai_kho === 'dang_kiem_ke') {
+      await conn.rollback();
+      req.flash('error', 'Kho lẻ nội trú đang kiểm kê, không thể duyệt hoàn ứng');
+      return res.redirect('/hoan-ung/duyet');
+    }
+
     for (const item of details) {
-      const allocation = await FefoService.allocate(item.thuoc_id, 3, item.so_luong_yeu_cau, conn);
+      const allocation = await FefoService.allocate(item.thuoc_id, khoNoiTruId, item.so_luong_yeu_cau, conn);
       if (!allocation.success) { await conn.rollback(); req.flash('error', 'Kho nội trú không đủ thuốc'); return res.redirect('/hoan-ung/duyet'); }
       await FefoService.deductStock(conn, allocation.allocation);
 
       // Ghi biến động kho xuất tại kho nội trú (nguồn xuất)
       await recordStockMovement(conn, {
-        kho_id: 3, thuoc_id: item.thuoc_id, loai_bien_dong: 'xuat_cap_phat',
+        kho_id: khoNoiTruId, thuoc_id: item.thuoc_id, loai_bien_dong: 'hoan_ung',
         so_luong: item.so_luong_yeu_cau, phieu_lien_quan: `HU-${phieuId}`, nguoi_thuc_hien_id: req.session.user.id
       });
 
@@ -98,8 +114,11 @@ router.post('/duyet/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'),
 
     await conn.query("UPDATE phieu_hoan_ung SET trang_thai = 'da_hoan_thanh', nguoi_duyet_id = ?, ngay_duyet = NOW() WHERE id = ?",
       [req.session.user.id, phieuId]);
-    await conn.query("UPDATE hang_cho_hoan_ung SET trang_thai = 'da_hoan_ung' WHERE kho_tu_truc_id = ? AND trang_thai = 'da_lap_phieu'",
-      [phieu[0].kho_tu_truc_id]);
+    const thuocIds = details.map(d => d.thuoc_id);
+    if (thuocIds.length > 0) {
+      await conn.query("UPDATE hang_cho_hoan_ung SET trang_thai = 'da_hoan_ung' WHERE kho_tu_truc_id = ? AND trang_thai = 'da_lap_phieu' AND thuoc_id IN (?)",
+        [phieu[0].kho_tu_truc_id, thuocIds]);
+    }
     await conn.commit();
     req.flash('success', 'Hoàn ứng thành công. Tủ trực đã được bổ sung.');
   } catch (err) { await conn.rollback(); console.error(err); req.flash('error', 'Lỗi: ' + err.message); }

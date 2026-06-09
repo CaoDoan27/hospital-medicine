@@ -39,7 +39,21 @@ router.get('/chi-tiet/:dotId', isAuthenticated, authorize('ke_toan'), async (req
 
 router.post('/chot/:dotId', isAuthenticated, authorize('ke_toan'), async (req, res) => {
   try {
-    await db.query("UPDATE dot_dieu_tri SET trang_thai = 'da_chot_vien_phi' WHERE id = ?", [req.params.dotId]);
+    // Kiểm tra trạng thái hiện tại — chỉ cho phép chốt khi đang điều trị
+    const [dotCheck] = await db.query('SELECT trang_thai, ngay_ra FROM dot_dieu_tri WHERE id = ?', [req.params.dotId]);
+    if (!dotCheck.length) {
+      req.flash('error', 'Không tìm thấy đợt điều trị');
+      return res.redirect('/chi-phi-noi-tru');
+    }
+    if (dotCheck[0].trang_thai === 'da_xuat_xml') {
+      req.flash('error', 'Đợt điều trị đã xuất XML, không thể chốt lại');
+      return res.redirect('/chi-phi-noi-tru');
+    }
+    if (dotCheck[0].trang_thai === 'da_chot_vien_phi') {
+      req.flash('error', 'Đợt điều trị đã được chốt viện phí trước đó');
+      return res.redirect('/chi-phi-noi-tru');
+    }
+    await db.query("UPDATE dot_dieu_tri SET trang_thai = 'da_chot_vien_phi' WHERE id = ? AND trang_thai = 'dang_dieu_tri'", [req.params.dotId]);
     req.flash('success', 'Đã chốt viện phí thuốc cho bệnh nhân');
   } catch (err) { req.flash('error', 'Lỗi: ' + err.message); }
   res.redirect('/chi-phi-noi-tru');

@@ -17,22 +17,34 @@ router.get('/', isAuthenticated, authorize('ke_toan', 'duoc_si_tong'), async (re
 });
 
 router.post('/generate', isAuthenticated, authorize('ke_toan', 'duoc_si_tong'), async (req, res) => {
+  const conn = await db.getConnection();
   try {
+    await conn.beginTransaction();
     const { dot_ids } = req.body;
     const ids = Array.isArray(dot_ids) ? dot_ids : [dot_ids];
+    if (!ids || ids.length === 0 || !ids[0]) {
+      await conn.rollback();
+      req.flash('error', 'Vui lòng chọn ít nhất 1 đợt điều trị để xuất XML');
+      return res.redirect('/xuat-xml');
+    }
 
     const xmlDocs = [];
+    const updatedIds = [];
+
     for (const dotId of ids) {
-      const [dotDT] = await db.query(`
-        SELECT d.*, bn.* FROM dot_dieu_tri d JOIN benh_nhan bn ON d.benh_nhan_id = bn.id WHERE d.id = ?
-      `, [dotId]);
-      const [costs] = await db.query(`
-        SELECT cp.*, t.ma_bhyt, t.ten_thuoc, t.don_vi_tinh, t.so_dang_ky, t.duong_dung
-        FROM chi_phi_bhyt cp JOIN thuoc t ON cp.thuoc_id = t.id WHERE cp.dot_dieu_tri_id = ?
+      // Kiểm tra trạng thái — chỉ cho phép xuất khi đã chốt viện phí
+      const [dotDT] = await conn.query(`
+        SELECT d.*, bn.* FROM dot_dieu_tri d JOIN benh_nhan bn ON d.benh_nhan_id = bn.id
+        WHERE d.id = ? AND d.trang_thai IN ('da_chot_vien_phi', 'da_xuat_xml')
       `, [dotId]);
 
       if (!dotDT.length) continue;
       const dt = dotDT[0];
+
+      const [costs] = await conn.query(`
+        SELECT cp.*, t.ma_bhyt, t.ten_thuoc, t.don_vi_tinh, t.so_dang_ky, t.duong_dung
+        FROM chi_phi_bhyt cp JOIN thuoc t ON cp.thuoc_id = t.id WHERE cp.dot_dieu_tri_id = ?
+      `, [dotId]);
 
       // Bảng 1: Tổng hợp KCB
       const table1 = {
@@ -73,10 +85,16 @@ router.post('/generate', isAuthenticated, authorize('ke_toan', 'duoc_si_tong'), 
       }));
 
       xmlDocs.push({ table1, table2 });
-      await db.query("UPDATE dot_dieu_tri SET trang_thai = 'da_xuat_xml' WHERE id = ?", [dotId]);
+      updatedIds.push(dotId);
     }
 
-    // Build XML
+    if (xmlDocs.length === 0) {
+      await conn.rollback();
+      req.flash('error', 'Không có đợt điều trị hợp lệ để xuất XML');
+      return res.redirect('/xuat-xml');
+    }
+
+    // Build XML trước khi cập nhật trạng thái
     const root = create({ version: '1.0', encoding: 'UTF-8' }).ele('DULIEU');
     root.ele('THONG_TIN_DON_VI').ele('MA_CSKCB').txt('00000').up().up();
 
@@ -91,10 +109,24 @@ router.post('/generate', isAuthenticated, authorize('ke_toan', 'duoc_si_tong'), 
     }
 
     const xmlString = root.end({ prettyPrint: true });
+
+    // XML tạo thành công → cập nhật trạng thái trong transaction
+    for (const dotId of updatedIds) {
+      await conn.query("UPDATE dot_dieu_tri SET trang_thai = 'da_xuat_xml' WHERE id = ?", [dotId]);
+    }
+    await conn.commit();
+
     res.setHeader('Content-Type', 'application/xml');
     res.setHeader('Content-Disposition', `attachment; filename=XML130_${Date.now()}.xml`);
     res.send(xmlString);
-  } catch (err) { console.error(err); req.flash('error', 'Lỗi xuất XML: ' + err.message); res.redirect('/xuat-xml'); }
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    req.flash('error', 'Lỗi xuất XML: ' + err.message);
+    res.redirect('/xuat-xml');
+  } finally {
+    conn.release();
+  }
 });
 
 module.exports = router;

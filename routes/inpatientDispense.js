@@ -75,6 +75,14 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), check
       JOIN thuoc t ON ct.thuoc_id = t.id WHERE ct.phieu_linh_id = ?
     `, [phieuLinhId]);
 
+    // Kiểm tra kho đang kiểm kê
+    const [khoCheck] = await conn.query('SELECT trang_thai_kho FROM kho WHERE id = ?', [khoId]);
+    if (khoCheck.length && khoCheck[0].trang_thai_kho === 'dang_kiem_ke') {
+      await conn.rollback();
+      req.flash('error', 'Kho đang kiểm kê, không thể cấp phát thuốc');
+      return res.redirect(`/cap-phat-noi-tru/chi-tiet/${phieuLinhId}`);
+    }
+
     // Lấy số lượng cấp phát thực tế từ form
     const soLuongCapPhat = req.body.so_luong_cap_phat || {};
 
@@ -117,7 +125,13 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), check
             });
             errors.push(`${item.ten_thuoc}: Chỉ cấp phát được ${allocation.totalAvailable}/${slCapPhat} (hết tồn kho)`);
             hasDispensedItems = true;
-            dispensedMap.set(item.thuoc_id, { cap_phat: allocation.totalAvailable, yeu_cau: item.so_luong_yeu_cau });
+            // Tích lũy thay vì ghi đè khi cùng thuoc_id
+            if (dispensedMap.has(item.thuoc_id)) {
+              const prev = dispensedMap.get(item.thuoc_id);
+              dispensedMap.set(item.thuoc_id, { cap_phat: prev.cap_phat + allocation.totalAvailable, yeu_cau: prev.yeu_cau + item.so_luong_yeu_cau });
+            } else {
+              dispensedMap.set(item.thuoc_id, { cap_phat: allocation.totalAvailable, yeu_cau: item.so_luong_yeu_cau });
+            }
           }
         } else {
           errors.push(`${item.ten_thuoc}: Hết tồn kho, không thể cấp phát`);
@@ -134,7 +148,13 @@ router.post('/xac-nhan/:id', isAuthenticated, authorize('duoc_si_kho_le'), check
         so_luong: slCapPhat, phieu_lien_quan: `PL-${phieuLinhId}`, nguoi_thuc_hien_id: req.session.user.id
       });
       hasDispensedItems = true;
-      dispensedMap.set(item.thuoc_id, { cap_phat: slCapPhat, yeu_cau: item.so_luong_yeu_cau });
+      // Tích lũy thay vì ghi đè khi cùng thuoc_id
+      if (dispensedMap.has(item.thuoc_id)) {
+        const prev = dispensedMap.get(item.thuoc_id);
+        dispensedMap.set(item.thuoc_id, { cap_phat: prev.cap_phat + slCapPhat, yeu_cau: prev.yeu_cau + item.so_luong_yeu_cau });
+      } else {
+        dispensedMap.set(item.thuoc_id, { cap_phat: slCapPhat, yeu_cau: item.so_luong_yeu_cau });
+      }
     }
 
     if (!hasDispensedItems) {

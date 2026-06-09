@@ -106,6 +106,14 @@ router.post('/cap-phat', isAuthenticated, authorize('duoc_si_kho_le'), checkKhoN
 
     const khoId = req.session.user.kho_id;
 
+    // Kiểm tra kho đang kiểm kê
+    const [khoCheck] = await conn.query('SELECT trang_thai_kho FROM kho WHERE id = ?', [khoId]);
+    if (khoCheck.length && khoCheck[0].trang_thai_kho === 'dang_kiem_ke') {
+      await conn.rollback();
+      req.flash('error', 'Kho đang kiểm kê, không thể cấp phát thuốc');
+      return res.redirect(`/cap-phat-ngoai-tru/don/${don_thuoc_id}`);
+    }
+
     for (const item of parsedItems) {
       const thuocId = parseInt(item.thuoc_id);
       const soLuong = parseInt(item.so_luong);
