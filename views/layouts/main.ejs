@@ -125,7 +125,12 @@
         <i class="fas fa-file-code"></i><span>Xuất XML 130</span>
       </a>
       <% } %>
-      <a href="/bao-cao" class="nav-item <%= currentPath.startsWith('/bao-cao') ? 'active' : '' %>">
+      <% if (role === 'duoc_si_tong') { %>
+      <a href="/bao-cao/dashboard" class="nav-item <%= currentPath === '/bao-cao/dashboard' ? 'active' : '' %>">
+        <i class="fas fa-chart-pie"></i><span>Dashboard Quản trị</span>
+      </a>
+      <% } %>
+      <a href="/bao-cao" class="nav-item <%= currentPath === '/bao-cao' ? 'active' : '' %>">
         <i class="fas fa-chart-bar"></i><span>Báo cáo thống kê</span>
       </a>
       <% } %>

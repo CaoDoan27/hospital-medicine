@@ -44,6 +44,8 @@
           <th style="padding:8px; border:1px solid #ddd; text-align:right">SL hệ thống</th>
           <th style="padding:8px; border:1px solid #ddd; text-align:right">SL thực tế</th>
           <th style="padding:8px; border:1px solid #ddd; text-align:right">Chênh lệch</th>
+          <th style="padding:8px; border:1px solid #ddd;">Lý do</th>
+          <th style="padding:8px; border:1px solid #ddd;">Hình ảnh</th>
         </tr></thead>
         <tbody id="kiemKeDetailBody"></tbody>
       </table>
@@ -68,6 +70,8 @@ async function viewKiemKeDetails(id) {
     result.details.forEach(d => {
       const diff = d.chenh_lech == null ? '-' : (d.chenh_lech > 0 ? '+' + d.chenh_lech : d.chenh_lech);
       const diffColor = d.chenh_lech > 0 ? 'color:#198754' : d.chenh_lech < 0 ? 'color:#dc3545' : '';
+      const lyDo = d.ly_do || '-';
+      const hinhAnhHtml = d.hinh_anh ? '<img src="' + d.hinh_anh + '" alt="Ảnh kiểm kê" style="max-width:60px; max-height:45px; border-radius:4px; border:1px solid #ddd; cursor:pointer;" onclick="showKKImage(this.src)">' : '-';
       tbody.insertAdjacentHTML('beforeend',
         '<tr>' +
         '<td style="padding:8px; border:1px solid #ddd;">' + d.ten_thuoc + '</td>' +
@@ -76,10 +80,23 @@ async function viewKiemKeDetails(id) {
         '<td style="padding:8px; border:1px solid #ddd; text-align:right">' + d.so_luong_he_thong + '</td>' +
         '<td style="padding:8px; border:1px solid #ddd; text-align:right">' + (d.so_luong_thuc_te == null ? '-' : d.so_luong_thuc_te) + '</td>' +
         '<td style="padding:8px; border:1px solid #ddd; text-align:right; ' + diffColor + '">' + diff + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd; font-size:13px;">' + lyDo + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd; text-align:center;">' + hinhAnhHtml + '</td>' +
         '</tr>');
     });
     document.getElementById('kiemKeDetailModal').style.display = 'flex';
   } catch (err) { alert('Lỗi tải chi tiết: ' + err.message); }
 }
 function closeKiemKeModal() { document.getElementById('kiemKeDetailModal').style.display = 'none'; }
+function showKKImage(src) {
+  var modal = document.getElementById('kkFullImageModal');
+  document.getElementById('kkFullImageSrc').src = src;
+  modal.style.display = 'flex';
+  event.stopPropagation();
+}
 </script>
+
+<!-- Modal xem ảnh phóng to -->
+<div id="kkFullImageModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:9999999; align-items:center; justify-content:center; cursor:pointer;" onclick="this.style.display='none'">
+  <img id="kkFullImageSrc" src="" alt="Full" style="max-width:90vw; max-height:90vh; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+</div>

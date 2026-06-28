@@ -20,7 +20,7 @@
       <td>
         <button class="btn btn-sm btn-info" onclick="viewTransferDetails(<%= t.id %>)"><i class="fas fa-eye"></i> Xem chi tiết</button>
         <% if (t.trang_thai === 'cho_duyet' && user.vai_tro === 'duoc_si_tong') { %>
-          <form action="/dieu-chuyen/duyet/<%= t.id %>" method="POST" style="display:inline"><button class="btn btn-sm btn-success"><i class="fas fa-check"></i> Duyệt</button></form>
+          <button class="btn btn-sm btn-success" onclick="openApproveModal(<%= t.id %>)"><i class="fas fa-check"></i> Duyệt</button>
         <% } else if (t.trang_thai === 'dang_van_chuyen' && user.vai_tro === 'duoc_si_kho_le') { %>
           <form action="/dieu-chuyen/xac-nhan/<%= t.id %>" method="POST" style="display:inline"><button class="btn btn-sm btn-primary"><i class="fas fa-check-double"></i> Xác nhận nhận</button></form>
         <% } %>
@@ -32,7 +32,7 @@
   </div>
 </div>
 
-<!-- Modal Chi tiết Điều Chuyển -->
+<!-- Modal Chi tiết Điều Chuyển (xem) -->
 <div id="transferDetailModal" tabindex="-1" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:999999; align-items:center; justify-content:center;">
   <div style="width:90%; max-width:800px; background:#fff; border-radius:8px; overflow:hidden; position:relative; box-shadow:0 4px 15px rgba(0,0,0,0.2); margin:0;">
     <div style="padding:15px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center;">
@@ -56,7 +56,83 @@
   </div>
 </div>
 
+<!-- Modal Duyệt phiếu - Điều chỉnh số lượng thực xuất -->
+<div id="approveModal" tabindex="-1" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:999999; align-items:center; justify-content:center;">
+  <div style="width:90%; max-width:900px; background:#fff; border-radius:8px; overflow:hidden; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.3); margin:0;">
+    <div style="padding:15px 20px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, #198754 0%, #20c997 100%);">
+      <h5 style="margin:0; color:#fff;"><i class="fas fa-clipboard-check"></i> Duyệt phiếu điều chuyển</h5>
+      <button type="button" onclick="closeApproveModal()" style="border:none; background:none; font-size:24px; cursor:pointer; color:#fff;">&times;</button>
+    </div>
+    <div style="padding:12px 20px; background:#f0fdf4; border-bottom:1px solid #bbf7d0; font-size:13px;">
+      <i class="fas fa-info-circle" style="color:#198754;"></i>
+      Điều chỉnh <strong>SL thực xuất</strong> cho từng thuốc trước khi duyệt. Số lượng không được vượt quá tồn kho hiện có.
+    </div>
+    <form id="approveForm" method="POST" action="">
+      <div style="padding:15px 20px; max-height:calc(100vh - 280px); overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="background:#f8f9fa;">
+              <th style="padding:10px; border:1px solid #ddd;">#</th>
+              <th style="padding:10px; border:1px solid #ddd;">Tên thuốc</th>
+              <th style="padding:10px; border:1px solid #ddd;">ĐVT</th>
+              <th style="padding:10px; border:1px solid #ddd; text-align:center;">SL Yêu cầu</th>
+              <th style="padding:10px; border:1px solid #ddd; text-align:center;">Tồn kho</th>
+              <th style="padding:10px; border:1px solid #ddd; text-align:center; min-width:120px;">SL Thực xuất</th>
+            </tr>
+          </thead>
+          <tbody id="approveTableBody">
+          </tbody>
+        </table>
+      </div>
+      <input type="hidden" name="items" id="approveItemsData">
+      <div style="padding:15px 20px; border-top:1px solid #ddd; display:flex; justify-content:flex-end; gap:10px; background:#fafafa;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeApproveModal()">Hủy</button>
+        <button type="submit" class="btn btn-success" onclick="return prepareApproveData()"><i class="fas fa-check"></i> Xác nhận duyệt xuất</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .approve-qty-input {
+    width: 90px;
+    text-align: center;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .approve-qty-input:focus {
+    border-color: #198754;
+    box-shadow: 0 0 0 2px rgba(25,135,84,0.15);
+    outline: none;
+  }
+  .approve-qty-input.is-warning {
+    border-color: #ffc107;
+    background: #fffbe6;
+  }
+  .approve-qty-input.is-invalid {
+    border-color: #dc3545;
+    background: #fff5f5;
+  }
+  .stock-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .stock-ok { background: #d1fae5; color: #065f46; }
+  .stock-low { background: #fef3c7; color: #92400e; }
+  .stock-out { background: #fee2e2; color: #991b1b; }
+  tr.qty-adjusted { background: #fffbe6; }
+  tr.qty-zero { background: #fee2e2; opacity: 0.7; }
+</style>
+
 <script>
+// ---- View details modal ----
 async function viewTransferDetails(id) {
   try {
     const modal = document.getElementById('transferDetailModal');
@@ -84,5 +160,133 @@ async function viewTransferDetails(id) {
 }
 function closeTransferModal() {
   document.getElementById('transferDetailModal').style.display = 'none';
+}
+
+// ---- Approve modal ----
+let approvePhieuId = null;
+let approveData = [];
+
+async function openApproveModal(id) {
+  try {
+    approvePhieuId = id;
+    const modal = document.getElementById('approveModal');
+    if (modal.parentNode !== document.body) {
+      document.body.appendChild(modal);
+    }
+    document.getElementById('approveForm').action = '/dieu-chuyen/duyet/' + id;
+    
+    const res = await fetch(`/dieu-chuyen/api/duyet-chi-tiet/${id}`);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+    
+    approveData = result.data;
+    const tbody = document.getElementById('approveTableBody');
+    tbody.innerHTML = '';
+    
+    result.data.forEach((item, index) => {
+      const maxQty = Math.min(item.so_luong_yeu_cau, item.ton_kho);
+      const defaultQty = maxQty;
+      const stockClass = item.ton_kho >= item.so_luong_yeu_cau ? 'stock-ok' : item.ton_kho > 0 ? 'stock-low' : 'stock-out';
+      
+      const row = `<tr id="approve-row-${index}">
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">${index + 1}</td>
+        <td style="padding:10px; border:1px solid #ddd;">${item.ten_thuoc}</td>
+        <td style="padding:10px; border:1px solid #ddd;">${item.don_vi_tinh}</td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center; font-weight:600;">${item.so_luong_yeu_cau}</td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">
+          <span class="stock-badge ${stockClass}">${item.ton_kho}</span>
+        </td>
+        <td style="padding:10px; border:1px solid #ddd; text-align:center;">
+          <input type="number" class="approve-qty-input" 
+            id="approve-qty-${index}" 
+            value="${defaultQty}" 
+            min="0" max="${item.ton_kho}" 
+            data-requested="${item.so_luong_yeu_cau}" 
+            data-stock="${item.ton_kho}"
+            data-detail-id="${item.id}"
+            onchange="onApproveQtyChange(this, ${index})"
+            oninput="onApproveQtyChange(this, ${index})">
+          <div id="approve-hint-${index}" style="font-size:11px; margin-top:3px; display:none;"></div>
+        </td>
+      </tr>`;
+      tbody.insertAdjacentHTML('beforeend', row);
+    });
+    
+    modal.style.display = 'flex';
+  } catch (err) {
+    alert('Lỗi tải chi tiết phiếu: ' + err.message);
+  }
+}
+
+function onApproveQtyChange(input, index) {
+  const requested = parseInt(input.dataset.requested);
+  const stock = parseInt(input.dataset.stock);
+  const value = parseInt(input.value) || 0;
+  const row = document.getElementById('approve-row-' + index);
+  const hint = document.getElementById('approve-hint-' + index);
+  
+  // Reset classes
+  input.classList.remove('is-warning', 'is-invalid');
+  row.classList.remove('qty-adjusted', 'qty-zero');
+  hint.style.display = 'none';
+  
+  if (value > stock) {
+    input.classList.add('is-invalid');
+    hint.innerHTML = '<span style="color:#dc3545;">⚠ Vượt tồn kho!</span>';
+    hint.style.display = 'block';
+  } else if (value === 0) {
+    row.classList.add('qty-zero');
+    hint.innerHTML = '<span style="color:#dc3545;">Không xuất</span>';
+    hint.style.display = 'block';
+  } else if (value < requested) {
+    input.classList.add('is-warning');
+    row.classList.add('qty-adjusted');
+    hint.innerHTML = '<span style="color:#b45309;">Giảm ' + (requested - value) + '</span>';
+    hint.style.display = 'block';
+  }
+}
+
+function prepareApproveData() {
+  const items = [];
+  let hasError = false;
+  
+  approveData.forEach((item, index) => {
+    const input = document.getElementById('approve-qty-' + index);
+    const value = parseInt(input.value) || 0;
+    const stock = parseInt(input.dataset.stock);
+    
+    if (value > stock) {
+      input.classList.add('is-invalid');
+      input.focus();
+      hasError = true;
+      return;
+    }
+    
+    items.push({
+      id: item.id,
+      thuoc_id: item.thuoc_id,
+      so_luong_duyet: value
+    });
+  });
+  
+  if (hasError) {
+    alert('Số lượng thực xuất không được vượt quá tồn kho!');
+    return false;
+  }
+  
+  // Check if all quantities are 0
+  if (items.every(it => it.so_luong_duyet === 0)) {
+    alert('Phải xuất ít nhất 1 thuốc!');
+    return false;
+  }
+  
+  document.getElementById('approveItemsData').value = JSON.stringify(items);
+  return true;
+}
+
+function closeApproveModal() {
+  document.getElementById('approveModal').style.display = 'none';
+  approvePhieuId = null;
+  approveData = [];
 }
 </script>

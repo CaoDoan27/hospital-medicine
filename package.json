@@ -8,7 +8,12 @@
     "dev": "nodemon app.js",
     "simulate": "node scripts/simulate.js"
   },
-  "keywords": ["hospital", "pharmacy", "medicine", "bhyt"],
+  "keywords": [
+    "hospital",
+    "pharmacy",
+    "medicine",
+    "bhyt"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -24,6 +29,7 @@
     "express-session": "^1.17.3",
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
+    "multer": "^2.2.0",
     "mysql2": "^3.7.0",
     "node-cron": "^3.0.3",
     "pdfkit": "^0.14.0",

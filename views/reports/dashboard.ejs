@@ -1,0 +1,298 @@
+<div class="card mb-3">
+  <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <h2><i class="fas fa-chart-line"></i> Dashboard Quản trị Tổng hợp</h2>
+    <div>
+      <a href="/bao-cao" class="btn btn-outline btn-sm"><i class="fas fa-table"></i> Báo cáo chi tiết</a>
+      <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="fas fa-print"></i> In Báo Cáo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Thống kê chung (Alert Summary) -->
+<div class="stats-grid mb-3">
+  <div class="stat-card" style="border-left: 4px solid #dc3545;">
+    <div class="stat-icon" style="color:#dc3545;"><i class="fas fa-exclamation-circle"></i></div>
+    <div class="stat-info">
+      <h3>Sắp/Đã hết hạn</h3>
+      <div class="stat-value text-danger"><%= alertSummary.expiring + alertSummary.expired %> <small style="font-size:14px; font-weight:normal; color:#666;">lô thuốc</small></div>
+    </div>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid #ffc107;">
+    <div class="stat-icon" style="color:#ffc107;"><i class="fas fa-arrow-down"></i></div>
+    <div class="stat-info">
+      <h3>Tồn kho thấp</h3>
+      <div class="stat-value text-warning"><%= alertSummary.lowStock %> <small style="font-size:14px; font-weight:normal; color:#666;">thuốc</small></div>
+    </div>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid #0d6efd;">
+    <div class="stat-icon" style="color:#0d6efd;"><i class="fas fa-exchange-alt"></i></div>
+    <div class="stat-info">
+      <h3>Điều chuyển chờ duyệt</h3>
+      <div class="stat-value text-primary"><%= alertSummary.pendingTransfers %> <small style="font-size:14px; font-weight:normal; color:#666;">phiếu</small></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2 mb-3">
+  <!-- Biểu đồ biến động N/X -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-chart-area"></i> Biến động Nhập - Xuất (14 ngày qua)</h2>
+    </div>
+    <div class="card-body" style="height: 300px;">
+      <canvas id="movementTrendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Tồn kho theo kho -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-warehouse"></i> Giá trị tồn kho hiện tại</h2>
+    </div>
+    <div class="card-body" style="height: 300px; display:flex; justify-content:center; align-items:center;">
+      <canvas id="stockValueChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2 mb-3">
+  <!-- Phân bổ hạn dùng -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-calendar-times"></i> Phân bổ trạng thái hạn dùng</h2>
+    </div>
+    <div class="card-body" style="height: 250px; display:flex; justify-content:center; align-items:center;">
+      <canvas id="expiryOverviewChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Top thuốc xuất -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-sort-amount-down"></i> Top 10 thuốc xuất nhiều (30 ngày)</h2>
+    </div>
+    <div class="card-body" style="height: 250px;">
+      <canvas id="topDrugsChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2 mb-3">
+  <!-- Đơn thuốc -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-file-prescription"></i> Thống kê Đơn thuốc (14 ngày)</h2>
+    </div>
+    <div class="card-body" style="height: 250px;">
+      <canvas id="prescriptionChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Giá trị nhập theo tháng -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-chart-bar"></i> Giá trị nhập kho (6 tháng qua)</h2>
+    </div>
+    <div class="card-body" style="height: 250px;">
+      <canvas id="importTrendChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  // Dữ liệu từ server
+  const rawMovementTrend = <%- JSON.stringify(movementTrend) %>;
+  const rawStockOverview = <%- JSON.stringify(stockOverview) %>;
+  const rawTopDrugs = <%- JSON.stringify(topDrugs) %>;
+  const rawExpiry = <%- JSON.stringify(expiryOverview) %>;
+  const rawPrescription = <%- JSON.stringify(prescriptionTrend) %>;
+  const rawImportTrend = <%- JSON.stringify(importTrend) %>;
+
+  // Format số tiền VND
+  const formatVND = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+
+  // 1. Biểu đồ Biến động Nhập Xuất (Line Chart)
+  new Chart(document.getElementById('movementTrendChart'), {
+    type: 'line',
+    data: {
+      labels: rawMovementTrend.map(d => new Date(d.ngay).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })),
+      datasets: [
+        {
+          label: 'Tổng Nhập',
+          data: rawMovementTrend.map(d => d.tong_nhap),
+          borderColor: '#198754',
+          backgroundColor: 'rgba(25, 135, 84, 0.1)',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Tổng Xuất',
+          data: rawMovementTrend.map(d => d.tong_xuat),
+          borderColor: '#dc3545',
+          backgroundColor: 'rgba(220, 53, 69, 0.1)',
+          fill: true,
+          tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // 2. Biểu đồ Giá trị tồn kho theo kho (Doughnut Chart)
+  new Chart(document.getElementById('stockValueChart'), {
+    type: 'doughnut',
+    data: {
+      labels: rawStockOverview.map(d => d.ten_kho),
+      datasets: [{
+        data: rawStockOverview.map(d => d.gia_tri_ton_kho),
+        backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#20c997']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right' },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.label + ': ' + formatVND(context.raw);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // 3. Phân bổ Hạn dùng (Pie Chart)
+  new Chart(document.getElementById('expiryOverviewChart'), {
+    type: 'pie',
+    data: {
+      labels: ['Đã hết hạn', '< 1 tháng', '1-3 tháng', '3-6 tháng', 'An toàn (>6 tháng)'],
+      datasets: [{
+        data: [
+          rawExpiry.da_het_han || 0,
+          rawExpiry.duoi_1_thang || 0,
+          rawExpiry.tu_1_den_3_thang || 0,
+          rawExpiry.tu_3_den_6_thang || 0,
+          rawExpiry.con_han || 0
+        ],
+        backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#17a2b8', '#28a745']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'right' } }
+    }
+  });
+
+  // 4. Top 10 Thuốc xuất nhiều (Bar Chart - Horizontal)
+  new Chart(document.getElementById('topDrugsChart'), {
+    type: 'bar',
+    data: {
+      labels: rawTopDrugs.map(d => {
+        // Cắt ngắn tên thuốc nếu quá dài
+        return d.ten_thuoc.length > 20 ? d.ten_thuoc.substring(0, 20) + '...' : d.ten_thuoc;
+      }),
+      datasets: [{
+        label: 'Số lượng xuất',
+        data: rawTopDrugs.map(d => d.tong_xuat),
+        backgroundColor: '#0d6efd'
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true } }
+    }
+  });
+
+  // 5. Thống kê đơn thuốc (Stacked Bar Chart)
+  new Chart(document.getElementById('prescriptionChart'), {
+    type: 'bar',
+    data: {
+      labels: rawPrescription.map(d => new Date(d.ngay).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })),
+      datasets: [
+        {
+          label: 'Đã cấp phát',
+          data: rawPrescription.map(d => d.da_cap_phat),
+          backgroundColor: '#198754'
+        },
+        {
+          label: 'Chờ cấp',
+          data: rawPrescription.map(d => d.cho_cap_phat),
+          backgroundColor: '#ffc107'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, beginAtZero: true }
+      }
+    }
+  });
+
+  // 6. Giá trị nhập kho 6 tháng (Bar Chart)
+  new Chart(document.getElementById('importTrendChart'), {
+    type: 'bar',
+    data: {
+      labels: rawImportTrend.map(d => d.thang), // "YYYY-MM"
+      datasets: [{
+        label: 'Giá trị nhập (VNĐ)',
+        data: rawImportTrend.map(d => d.tong_gia_tri),
+        backgroundColor: '#6f42c1',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) { return formatVND(context.raw); }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) { 
+              return new Intl.NumberFormat('vi-VN', { notation: 'compact', compactDisplay: 'short' }).format(value);
+            }
+          }
+        }
+      }
+    }
+  });
+
+</script>
+
+<style>
+  /* Print styling for the dashboard */
+  @media print {
+    body { background: #fff; }
+    .sidebar, .top-bar, .alert, .shortcuts-hint { display: none !important; }
+    .main-content { margin-left: 0 !important; padding: 0 !important; }
+    .card { box-shadow: none !important; border: 1px solid #ddd !important; margin-bottom: 20px !important; page-break-inside: avoid; }
+    .btn { display: none !important; }
+    .stats-grid { display: flex !important; margin-bottom: 20px !important; }
+    .stat-card { border: 1px solid #ddd !important; box-shadow: none !important; }
+  }
+</style>

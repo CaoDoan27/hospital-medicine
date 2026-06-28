@@ -1,4 +1,11 @@
-<div class="card mb-2"><div class="card-header"><h2><i class="fas fa-chart-bar"></i> Báo cáo thống kê</h2></div>
+<div class="card mb-2">
+  <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <h2><i class="fas fa-chart-bar"></i> Báo cáo thống kê</h2>
+    <% if (user && user.vai_tro === 'duoc_si_tong') { %>
+      <a href="/bao-cao/dashboard" class="btn btn-outline btn-sm"><i class="fas fa-chart-pie"></i> Xem Dashboard Quản trị</a>
+    <% } %>
+  </div>
+
 <div class="card-body">
   <form method="GET" class="form-row" style="align-items:flex-end">
     <div class="form-group"><label>Loại báo cáo</label>

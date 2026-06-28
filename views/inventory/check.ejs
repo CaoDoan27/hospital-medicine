@@ -1,20 +1,174 @@
 <div class="card"><div class="card-header"><h2><i class="fas fa-clipboard-check"></i> Kiểm kê: <%= session.ten_kho %></h2><a href="/kiem-ke" class="btn btn-outline btn-sm">Quay lại</a></div>
 <div class="card-body">
-  <form action="/kiem-ke/hoan-tat/<%= session.id %>" method="POST">
-    <div class="table-wrapper"><table><thead><tr><th>#</th><th>Tên thuốc</th><th>ĐVT</th><th>Số lô</th><th>SL Hệ thống</th><th>SL Thực tế</th><th>Chênh lệch</th></tr></thead>
+  <form action="/kiem-ke/hoan-tat/<%= session.id %>" method="POST" enctype="multipart/form-data" id="inventoryForm">
+    <div class="table-wrapper"><table><thead><tr><th>#</th><th>Tên thuốc</th><th>ĐVT</th><th>Số lô</th><th>SL Hệ thống</th><th>SL Thực tế</th><th>Chênh lệch</th><th style="min-width:200px">Lý do</th><th style="min-width:150px">Hình ảnh</th></tr></thead>
     <tbody>
-    <% details.forEach((d, i) => { %><tr>
+    <% details.forEach((d, i) => { %><tr data-row-index="<%= i %>">
       <td><%= i+1 %></td><td><%= d.ten_thuoc %></td><td><%= d.don_vi_tinh %></td><td><%= d.so_lo %></td>
       <td class="text-center"><%= d.so_luong_he_thong %></td>
       <td><input type="number" class="form-control actual" value="<%= d.so_luong_thuc_te != null ? d.so_luong_thuc_te : d.so_luong_he_thong %>" min="0" data-system="<%= d.so_luong_he_thong %>" onchange="updateDiff(this)"></td>
       <td class="diff text-center">-</td>
+      <td>
+        <div class="reason-wrap" style="display:none;">
+          <input type="text" class="form-control reason-input" placeholder="Nhập lý do điều chỉnh..." maxlength="500" style="font-size:13px;">
+          <small class="reason-hint" style="color:#dc3545; display:none; font-size:11px;">⚠ Bắt buộc nhập lý do khi có chênh lệch</small>
+        </div>
+        <span class="no-reason-text" style="color:#999; font-size:12px;">-</span>
+      </td>
+      <td>
+        <div class="image-wrap" style="display:none;">
+          <label class="btn btn-sm btn-outline upload-label" style="cursor:pointer; font-size:12px; padding:4px 8px; margin:0; position:relative; overflow:hidden;">
+            <i class="fas fa-camera"></i> Chọn ảnh
+            <input type="file" name="hinh_anh_<%= i %>" accept="image/*" class="image-input" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;" onchange="previewImage(this, <%= i %>)">
+          </label>
+          <div class="image-preview" id="preview-<%= i %>" style="margin-top:5px; display:none;">
+            <div style="position:relative; display:inline-block;">
+              <img src="" alt="Preview" style="max-width:80px; max-height:60px; border-radius:4px; border:1px solid #ddd; cursor:pointer;" onclick="showFullImage(this.src)">
+              <button type="button" class="remove-img-btn" onclick="removeImage(<%= i %>)" style="position:absolute; top:-6px; right:-6px; background:#dc3545; color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:11px; cursor:pointer; line-height:18px; padding:0;">&times;</button>
+            </div>
+          </div>
+          <small style="display:block; color:#999; font-size:10px; margin-top:2px;">Tối đa 5MB</small>
+        </div>
+        <span class="no-image-text" style="color:#999; font-size:12px;">-</span>
+      </td>
     </tr><% }) %></tbody></table></div>
     <input type="hidden" name="items" id="itemsData">
-    <div class="btn-group mt-2"><button type="submit" class="btn btn-success" onclick="prepareData()"><i class="fas fa-check"></i> Hoàn tất kiểm kê</button></div>
+    <div class="btn-group mt-2"><button type="submit" class="btn btn-success" onclick="return prepareData()"><i class="fas fa-check"></i> Hoàn tất kiểm kê</button></div>
   </form>
 </div></div>
+
+<!-- Modal xem ảnh phóng to -->
+<div id="fullImageModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:999999; align-items:center; justify-content:center; cursor:pointer;" onclick="this.style.display='none'">
+  <img id="fullImageSrc" src="" alt="Full" style="max-width:90vw; max-height:90vh; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+</div>
+
+<style>
+  .reason-wrap { transition: all 0.3s ease; }
+  .reason-input { border: 1px solid #ddd; border-radius: 4px; padding: 6px 8px; width: 100%; }
+  .reason-input:focus { border-color: #0d6efd; box-shadow: 0 0 0 2px rgba(13,110,253,0.15); outline: none; }
+  .reason-input.is-invalid { border-color: #dc3545; background: #fff5f5; }
+  .upload-label { border: 1px dashed #adb5bd; border-radius: 4px; transition: all 0.2s; display: inline-block; }
+  .upload-label:hover { border-color: #0d6efd; color: #0d6efd; background: #f0f6ff; }
+  tr.has-diff { background: #fffbe6; }
+  tr.has-diff td { border-bottom-color: #ffc107; }
+</style>
+
 <script>
-function updateDiff(input){const sys=parseInt(input.dataset.system);const act=parseInt(input.value)||0;const diff=act-sys;const cell=input.closest('tr').querySelector('.diff');cell.textContent=diff;cell.className='diff text-center '+(diff<0?'text-danger fw-bold':diff>0?'text-success':'');}
-function prepareData(){const rows=document.querySelectorAll('tbody tr');const items=[];const details=<%- JSON.stringify(details) %>;rows.forEach((r,i)=>{const actual=r.querySelector('.actual').value;if(actual!=='')items.push({id:details[i].id,lo_thuoc_id:details[i].lo_thuoc_id,thuoc_id:details[i].thuoc_id,so_luong_thuc_te:actual});});document.getElementById('itemsData').value=JSON.stringify(items);}
-document.querySelectorAll('.actual').forEach(i=>updateDiff(i));
+function updateDiff(input){
+  const sys=parseInt(input.dataset.system);
+  const act=parseInt(input.value)||0;
+  const diff=act-sys;
+  const cell=input.closest('tr').querySelector('.diff');
+  cell.textContent=diff;
+  cell.className='diff text-center '+(diff<0?'text-danger fw-bold':diff>0?'text-success':'');
+  
+  const row = input.closest('tr');
+  const reasonWrap = row.querySelector('.reason-wrap');
+  const noReasonText = row.querySelector('.no-reason-text');
+  const imageWrap = row.querySelector('.image-wrap');
+  const noImageText = row.querySelector('.no-image-text');
+  const reasonHint = row.querySelector('.reason-hint');
+  
+  if (diff !== 0) {
+    // Có chênh lệch -> hiện ô lý do và ảnh
+    reasonWrap.style.display = 'block';
+    noReasonText.style.display = 'none';
+    imageWrap.style.display = 'block';
+    noImageText.style.display = 'none';
+    reasonHint.style.display = 'block';
+    row.classList.add('has-diff');
+  } else {
+    // Không chênh lệch -> ẩn
+    reasonWrap.style.display = 'none';
+    noReasonText.style.display = 'inline';
+    imageWrap.style.display = 'none';
+    noImageText.style.display = 'inline';
+    reasonHint.style.display = 'none';
+    row.classList.remove('has-diff');
+    row.querySelector('.reason-input').value = '';
+    row.querySelector('.reason-input').classList.remove('is-invalid');
+  }
+}
+
+function previewImage(input, index) {
+  const previewDiv = document.getElementById('preview-' + index);
+  if (input.files && input.files[0]) {
+    // Validate file size
+    if (input.files[0].size > 5 * 1024 * 1024) {
+      alert('Hình ảnh không được vượt quá 5MB!');
+      input.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      previewDiv.style.display = 'block';
+      previewDiv.querySelector('img').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function removeImage(index) {
+  const row = document.querySelector('tr[data-row-index="' + index + '"]');
+  const input = row.querySelector('.image-input');
+  const previewDiv = document.getElementById('preview-' + index);
+  input.value = '';
+  previewDiv.style.display = 'none';
+  previewDiv.querySelector('img').src = '';
+}
+
+function showFullImage(src) {
+  const modal = document.getElementById('fullImageModal');
+  document.getElementById('fullImageSrc').src = src;
+  modal.style.display = 'flex';
+  event.stopPropagation();
+}
+
+function prepareData(){
+  const rows = document.querySelectorAll('tbody tr');
+  const items = [];
+  const details = <%- JSON.stringify(details) %>;
+  let hasError = false;
+  
+  rows.forEach((r, i) => {
+    const actual = r.querySelector('.actual').value;
+    if (actual === '') return;
+    
+    const sys = parseInt(r.querySelector('.actual').dataset.system);
+    const act = parseInt(actual) || 0;
+    const diff = act - sys;
+    
+    const reasonInput = r.querySelector('.reason-input');
+    let lyDo = reasonInput ? reasonInput.value.trim() : '';
+    
+    // Validate: nếu có chênh lệch thì bắt buộc nhập lý do
+    if (diff !== 0 && !lyDo) {
+      reasonInput.classList.add('is-invalid');
+      reasonInput.focus();
+      hasError = true;
+      return;
+    } else if (reasonInput) {
+      reasonInput.classList.remove('is-invalid');
+    }
+    
+    items.push({
+      id: details[i].id,
+      lo_thuoc_id: details[i].lo_thuoc_id,
+      thuoc_id: details[i].thuoc_id,
+      so_luong_thuc_te: actual,
+      ly_do: lyDo || null,
+      row_index: i
+    });
+  });
+  
+  if (hasError) {
+    alert('Vui lòng nhập lý do cho tất cả các thuốc có chênh lệch!');
+    return false;
+  }
+  
+  document.getElementById('itemsData').value = JSON.stringify(items);
+  return true;
+}
+
+document.querySelectorAll('.actual').forEach(i => updateDiff(i));
 </script>

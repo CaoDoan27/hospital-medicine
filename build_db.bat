@@ -4,3 +4,4 @@ mysql -u root -p123456 --default-character-set=utf8mb4 hospital_medicine < sql\s
 mysql -u root -p123456 --default-character-set=utf8mb4 hospital_medicine < sql\seed_prescriptions.sql
 mysql -u root -p123456 --default-character-set=utf8mb4 hospital_medicine < sql\seed_medical_orders.sql
 mysql -u root -p123456 --default-character-set=utf8mb4 hospital_medicine < sql\seed_inventory.sql
+mysql -u root -p123456 --default-character-set=utf8mb4 hospital_medicine < sql\seed_10days.sql
